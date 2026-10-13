@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HEROES,STARTERS,fresh,chooseStarter,unit,buy,merge,traits,active,move,equip,sell,restore,roll,enemies,makeBattle,step,burst,settle,advance,makeDuel,runDuel,makePool,rollPool,capacity,levelUp,levelCost,POOL_SIZE} from './engine.js';
+import {CHAIN,copiesOf,chainOf,HEROES,STARTERS,fresh,chooseStarter,unit,buy,merge,traits,active,move,equip,sell,restore,roll,enemies,makeBattle,step,burst,settle,advance,makeDuel,runDuel,makePool,rollPool,capacity,levelUp,levelCost,POOL_SIZE} from './engine.js';
 import {Room} from './multi.mjs';
 const rng=(seed=42)=>()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
 function starter(id='dragon'){const s=fresh();chooseStarter(s,id);return s;}
@@ -12,7 +12,7 @@ test('배치 인원 제한과 맞교환, 잘못된 칸 차단',()=>{const s=star
 test('동일 캐릭터로 유대 중복 계산하지 않음',()=>{assert.equal(active(traits([unit(0),unit(0)]),'회절'),false);assert.equal(active(traits([unit(0),unit(2)]),'회절'),true);});
 test('에코 장착·교체·판매 시 반환, 전투 중 차단',()=>{const s=starter();const u=s.board[0];s.inventory=['bell'];assert.ok(equip(s,u.uid,0));assert.equal(u.echo,'bell');assert.deepEqual(s.inventory,['jue']);s.phase='battle';assert.equal(equip(s,u.uid,0),false);assert.equal(sell(s,u.uid),false);s.phase='prep';assert.ok(sell(s,u.uid));assert.deepEqual(s.inventory,['jue','bell']);});
 test('금희 협동 조합의 실제 추격과 승천 축적',()=>{const s=starter();s.round=4;const {b,all}=fight(s);assert.ok(all.some(e=>e.kind==='coop'));assert.ok(all.some(e=>e.states.some(f=>f.charge>0)));assert.ok(all.some(e=>e.kind==='skill'&&e.name==='용의 승천'));assert.ok(b.fighters.some(f=>f.extras>0));});
-test('같은 씨드에서 에코 해방 피해 강화',()=>{const s=starter();s.board=[unit(0,2),...Array(11).fill(null)];s.round=4;const a=fight(s,10);s.board[0].echo='jue';const b=fight(s,10);const first=evs=>evs.find(e=>e.kind==='ult'&&e.from===s.board[0].uid).amount;assert.ok(first(b.all)>first(a.all));});
+test('같은 씨드에서 에코 해방 피해 강화',()=>{const s=starter();s.board=[unit(0,2),...Array(11).fill(null)];s.round=4;const a=fight(s,10);s.board[0].echo='jue';const b=fight(s,10);const best=evs=>Math.max(...evs.filter(e=>e.kind==='ult'&&e.from===s.board[0].uid).map(e=>e.amount));assert.ok(best(b.all)>best(a.all));});
 test('협주 총공격은 100 필요, 소비와 유한 연쇄',()=>{const s=starter();s.round=5;const b=makeBattle(s,enemies(5),rng());assert.deepEqual(burst(b),[]);b.energy=100;const events=burst(b);assert.equal(b.bursts,1);assert.equal(b.energy,0);assert.equal(events[0].kind,'burst');assert.ok(events.some(e=>e.kind==='extra'));assert.deepEqual(burst(b),[]);});
 test('모든 시작 덱이 첫 구역 돌파 가능',()=>{for(const kit of STARTERS)for(let seed=1;seed<=5;seed++){const {b}=fight(starter(kit.id),seed);assert.equal(b.winner,'ally',`${kit.id}, seed ${seed}`);}});
 test('9개 구역 종료·체력 범위·공격량·원본 상태 보존',()=>{for(let r=1;r<=9;r++){const s=starter();s.round=r;s.board[0].star=r>3?2:1;s.board[3]=unit(2);const original=JSON.stringify(s.board);const {b,all}=fight(s,r);assert.ok(b.tick<=60);assert.ok(['ally','enemy'].includes(b.winner));assert.ok(all.length<4000);assert.ok(b.fighters.every(f=>Number.isFinite(f.hp)&&f.hp>=0&&f.hp<=f.max));assert.equal(JSON.stringify(s.board),original);}});
@@ -64,11 +64,11 @@ test('용융 유대는 실제 해방 피해를 높이고 전도 유대는 협주
 
 // ── 2026-10 확장: 신규 공명자 8명 ──
 const NEW8=['페비','루파','칸타렐라','능양','카카루','아우구스타','유노','샤콘'];
-test('24명 · 6속성 각 4명 · 신규 8명 모집/합성 가능',()=>{
- assert.equal(HEROES.length,24);
+test('25명 · 6속성 최소 4명 · 신규 8명 모집/합성 가능',()=>{
+ assert.equal(HEROES.length,25);
  const by={};for(const h of HEROES)by[h.origin]=(by[h.origin]||0)+1;
- assert.deepEqual(Object.values(by),[4,4,4,4,4,4]);
- assert.equal(new Set(HEROES.map(h=>h.key)).size,24);
+ assert.equal(Object.keys(by).length,6);assert.ok(Object.values(by).every(n=>n>=4));
+ assert.equal(new Set(HEROES.map(h=>h.key)).size,25);
  for(const name of NEW8){const h=HEROES.find(h=>h.name===name);assert.ok(h,name);const s=starter();s.gold=40;s.shop=[h.id,h.id,h.id,null,null];for(let i=0;i<3;i++)assert.ok(!buy(s,i).error);assert.equal(s.bench.find(Boolean).star,2);}
 });
 test('신규 공명자 해방이 고유 효과를 낸다',()=>{
@@ -95,7 +95,7 @@ test('PvP 전투는 양측 유대·변주를 각각 적용하고 반드시 끝�
  for(let seed=1;seed<=20;seed++){const {b,events}=runDuel(team([0,8,9,2]),team([3,11,10,18]),rng(seed));assert.ok(b.ended);assert.ok(['ally','enemy','draw'].includes(b.winner));assert.ok(events.length<6000);assert.ok(b.fighters.every(f=>Number.isFinite(f.hp)&&f.hp>=0));}
 });
 test('PvP 협주는 양측 모두 자동 발동',()=>{let both=false;for(let seed=1;seed<=10&&!both;seed++){const {events}=runDuel(team([14,8,20,21]),team([14,8,20,21]),rng(seed));const sides=new Set(events.filter(e=>e.kind==='burst').map(e=>e.side));both=sides.has('ally')&&sides.has('enemy');}assert.ok(both);});
-test('응결 유대는 상대 쪽 공격력만 낮춘다',()=>{const a=team([4,9]),o=team([0,2]);const b=makeDuel(a,o,rng());const foeJin=b.fighters.find(f=>f.side==='enemy'&&f.id===0),myCarl=b.fighters.find(f=>f.side==='ally'&&f.id===4);assert.ok(Math.abs(foeJin.atk-HEROES[0].atk*1.9*.88)<1e-6);assert.ok(Math.abs(myCarl.atk-HEROES[4].atk*1.9)<1e-6);});
+test('응결 유대는 상대 쪽 공격력만 낮춘다',()=>{const a=team([4,9]),o=team([0,2]);const b=makeDuel(a,o,rng());const foeJin=b.fighters.find(f=>f.side==='enemy'&&f.id===0),myCarl=b.fighters.find(f=>f.side==='ally'&&f.id===4);assert.ok(Math.abs(foeJin.atk-HEROES[0].atk*1.9*1.08*.88)<1e-6);assert.ok(Math.abs(myCarl.atk-HEROES[4].atk*1.9*1.08)<1e-6);});
 // ── 공용 풀·출전 확장 ──
 test('공용 풀: 비어 있으면 등장·모집 불가, 판매 시 반환',()=>{
  const pool=makePool();assert.equal(pool[0],POOL_SIZE[HEROES[0].cost]);
@@ -134,4 +134,37 @@ test('방: 권한·보상 선택·준비 완료·중도 이탈',()=>{
  r.act(a,{type:'watched',seq:r.battleSeq});assert.equal(r.phase,'battle');r.act(b,{type:'watched',seq:r.battleSeq});assert.equal(r.phase,'prep');assert.equal(r.round,2);
  assert.equal(a.s.pending.length,1);const inv=a.s.inventory.length;assert.ok(r.act(a,{type:'pick',i:1}).ok);assert.equal(a.s.inventory.length,inv+1);
  const gold=b.s.gold;r.act(b,{type:'leave'});assert.equal(r.phase,'over');assert.equal(a.place,1);assert.equal(b.place,2);assert.ok(gold>=0);
+});
+
+// ── 2026-10-13: 젠니 · 공명 체인 ──
+test('공명 체인: 사본마다 한 칸, ★3(9장)에서 6칸, 판매하면 닫힘',()=>{
+ const s=starter('frazzle');const zani=HEROES.find(h=>h.name==='젠니').id;
+ assert.equal(chainOf(s,zani),0);s.gold=99;s.shop=[zani,zani,zani,zani,null];
+ const r1=buy(s,0);assert.equal(r1.chain,1);assert.ok(r1.notices.some(n=>n.includes('공명 체인 1')));
+ const r2=buy(s,1);assert.equal(r2.chain,2);assert.equal(r2.notices.length,1);assert.ok(r2.notices[0].includes('★★')&&r2.notices[0].includes('공명 체인 2'));
+ buy(s,2);assert.equal(copiesOf(s,zani),4);assert.equal(chainOf(s,zani),3);
+ s.board.fill(null);s.bench.fill(null);s.board[0]=unit(zani,3);assert.equal(chainOf(s,zani),6);
+ assert.ok(sell(s,s.board[0].uid));assert.equal(chainOf(s,zani),0);
+ assert.deepEqual(CHAIN.map(c=>c.copies),[2,3,4,5,7,9]);
+});
+test('공명 체인 효과: 해방 가속·변주 입장·메아리',()=>{
+ const s=starter();s.board.fill(null);s.round=6;s.board[0]=unit(7,3);s.board[1]=unit(10);
+ const b=makeBattle(s,[unit(7,3)],()=>.5);const f=b.fighters.find(f=>f.uid===s.board[0].uid),mate=b.fighters.find(f=>f.uid===s.board[1].uid),foe=b.fighters.find(f=>f.side==='enemy');
+ assert.equal(f.chain,6);assert.equal(f.threshold,3);assert.ok(f.shield>=120);assert.equal(mate.chain,0);
+ foe.hp=foe.max=1e6;foe.atk=0;f.mana=f.threshold-1;const all=[...step(b),...step(b)];
+ assert.ok(all.some(e=>e.from===f.uid&&e.kind==='skill'&&e.name.includes('메아리')));
+ assert.ok(all.some(e=>e.kind==='intro'&&e.from===mate.uid));
+ const npc=b.fighters.find(f=>f.side==='enemy');assert.equal(npc.chain,0);
+});
+test('젠니: 타격으로 광휘 축적, 페비가 광휘를 더하고 해방이 소모',()=>{
+ const zani=HEROES.find(h=>h.name==='젠니').id,phoebe=HEROES.find(h=>h.name==='페비').id;
+ const run=withPhoebe=>{const s=starter();s.board.fill(null);s.round=6;s.board[0]=unit(zani);if(withPhoebe)s.board[1]=unit(phoebe);
+  const b=makeBattle(s,[unit(7,3)],()=>.5);const z=b.fighters.find(f=>f.id===zani),foe=b.fighters.find(f=>f.side==='enemy');foe.hp=foe.max=1e6;foe.atk=0;
+  if(withPhoebe){const p=b.fighters.find(f=>f.id===phoebe);p.mana=p.threshold-1;}
+  step(b);const stacks=foe.frazzle;z.mana=z.threshold-1;const ev=step(b);return {stacks,ult:ev.find(e=>e.from===z.uid&&e.kind==='ult').amount,after:foe.frazzle};};
+ const solo=run(false),duo=run(true);
+ assert.ok(solo.stacks>=1);assert.ok(duo.stacks>=solo.stacks+2);assert.ok(duo.ult>solo.ult);assert.ok(duo.after<=1);
+});
+test('새 시작 팀(젠니·카르티시아)은 유대를 켜고 첫 구역을 돌파',()=>{
+ for(const [kit,t] of [['frazzle','회절'],['erosion','기류']])for(let seed=1;seed<=10;seed++){const s=starter(kit);assert.ok(active(traits(s.board),t));assert.ok(active(traits(s.board),'조율'));assert.equal(fight(s,seed).b.winner,'ally',`${kit}:${seed}`);}
 });

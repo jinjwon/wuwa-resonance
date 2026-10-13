@@ -25,7 +25,8 @@ export const HEROES = [
   ['카카루','전도','공명',2,720,70,'사냥개의 처형','단일 큰 피해. 대상 체력이 50% 이하면 피해 1.5배.','#ab92ff','calcharo'],
   ['아우구스타','전도','공명',4,840,72,'개선의 창','자신에게 보호막 후 적 전체 큰 피해. 협주 +10.','#ffd36e','augusta'],
   ['유노','기류','협동',4,760,70,'달의 궤도','적 전체 피해. 이후 4회 공격에 협동 사격.','#9fe6c8','iuno'],
-  ['샤콘','기류','조율',3,740,46,'바람의 협주곡','아군 전체 보호막과 협주 +15. 아군 전원이 바람 추격 1회.','#7fd9bd','ciaccona']
+  ['샤콘','기류','조율',3,740,46,'바람의 협주곡','아군 전체 보호막과 협주 +15. 아군 전원이 바람 추격 1회.','#7fd9bd','ciaccona'],
+  ['젠니','회절','공명',3,780,66,'최종 결산','공격마다 대상에 광휘 축적(최대 6). 해방 시 적 전체의 광휘를 터뜨려 축적 1당 피해 +35%.','#f0b3a8','zani']
 ].map((h,id)=>({id,name:h[0],origin:h[1],role:h[2],cost:h[3],hp:h[4],atk:h[5],skill:h[6],desc:h[7],color:h[8],key:h[9]}));
 export const ELEMENT_ICON = {용융:'♨',전도:'ϟ',회절:'✦',응결:'❄',기류:'≋',인멸:'☾'};
 export const TRAIT_ICON = {...ELEMENT_ICON,공명:'✧',협동:'羽',연격:'⚔',조율:'♫'};
@@ -56,8 +57,24 @@ export const STARTERS=[
  {id:'storm',title:'폭풍을 가르는 청룡',lead:7,units:[7,5,2],tag:'기염 × 카르티시아 × 파수인',desc:'기류 추격과 파수인의 회복으로 연쇄 돌파.',echo:'heron'},
  {id:'inferno',title:'양과 용의 불꽃 합주',lead:12,units:[12,13,10],tag:'앙코 × 모르테피 × 벨리나',desc:'앙코의 불꽃 추격과 모르테피의 협동 사격. 용융으로 해방 강화.',echo:'crown'},
  {id:'voltage',title:'빙점을 넘는 연산',lead:14,units:[14,8,15],tag:'상리요 × 음림 × 산화',desc:'전도 협주 충전으로 총공격을 앞당기고 산화의 보호막으로 버티기.',echo:'heron'},
- {id:'triumph',title:'바람이 부르는 개선가',lead:21,units:[21,22,23],tag:'아우구스타 × 유노 × 샤콘',desc:'기류 추격과 샤콘의 보호막 위에서 아우구스타의 창을 내리꽂기.',echo:'jue'}
+ {id:'triumph',title:'바람이 부르는 개선가',lead:21,units:[21,22,23],tag:'아우구스타 × 유노 × 샤콘',desc:'기류 추격과 샤콘의 보호막 위에서 아우구스타의 창을 내리꽂기.',echo:'jue'},
+ {id:'frazzle',title:'빛으로 정산하는 밤',lead:24,units:[24,16,2],tag:'젠니 × 페비 × 파수인',desc:'젠니의 타격과 페비의 표식으로 광휘를 쌓고, 젠니의 해방으로 한 번에 결산.',echo:'jue'},
+ {id:'erosion',title:'침식하는 폭풍검',lead:5,units:[5,23,18],tag:'카르티시아 × 샤콘 × 칸타렐라',desc:'샤콘의 보호막과 칸타렐라의 회복 위에서 카르티시아가 체력을 태워 베어 낸다.',echo:'crown'}
 ];
+// ── 공명 체인: 같은 공명자를 모을수록 한 칸씩 열린다 (★ 승급과 별개로 사본 1장마다 의미가 있음) ──
+// 사본 수 = 보유 중인 같은 공명자의 3^(★-1) 합. 판매하면 다시 닫힌다.
+export const CHAIN=[
+ {n:1,copies:2,name:'공명의 각성',desc:'공격력·최대 체력 +8%'},
+ {n:2,copies:3,name:'가속하는 주파수',desc:'해방 필요 공격 횟수 −1'},
+ {n:3,copies:4,name:'변주 연계',desc:'해방 직후 다음 아군이 변주 입장 공격(공격력 80%)'},
+ {n:4,copies:5,name:'공명 증폭',desc:'해방 피해 +25%'},
+ {n:5,copies:7,name:'잔향 수호',desc:'시작 보호막 120 · 해방마다 협주 +8'},
+ {n:6,copies:9,name:'잔향의 메아리',desc:'해방이 60% 위력으로 한 번 더 울린다'}
+];
+export function copiesOf(s,id){return [...s.board,...s.bench].reduce((n,u)=>n+(u?.id===id?3**(u.star-1):0),0);}
+export const chainLevel=copies=>CHAIN.filter(c=>copies>=c.copies).length;
+export const chainOf=(s,id)=>chainLevel(copiesOf(s,id));
+function chainMap(s){const m=new Map();for(const u of [...s.board,...s.bench])if(u)m.set(u.id,(m.get(u.id)||0)+3**(u.star-1));return id=>chainLevel(m.get(id)||0);}
 let uid=0;
 export function unit(id,star=1){return {uid:++uid,id,star,echo:null};}
 export function syncUid(n){uid=Math.max(uid,n|0);}
@@ -84,7 +101,9 @@ export function rollPool(pool,round,rng=Math.random){
 }
 
 export function merge(s){const notices=[];let again=true;while(again){again=false;for(let id=0;id<HEROES.length;id++)for(let star=1;star<3;star++){const found=[];for(const area of ['board','bench'])s[area].forEach((u,i)=>{if(u?.id===id&&u.star===star)found.push({area,i,u});});if(found.length>=3){const group=found.slice(0,3),keep=group[0];const equipped=group.find(x=>x.u.echo);const echo=equipped?.u.echo||null;for(const x of group){if(x.u.echo&&x!==equipped)s.inventory.push(x.u.echo);s[x.area][x.i]=null;}s[keep.area][keep.i]={...keep.u,star:star+1,echo};notices.push(`${HEROES[id].name} ${'★'.repeat(star+1)} 승급`);again=true;}}}return notices;}
-export function buy(s,index,pool=null){if(s.phase!=='prep')return {error:'준비 단계에 모집할 수 있어요.'};const id=s.shop[index];if(id===null||id===undefined)return {error:'이미 모집했습니다.'};if(s.gold<HEROES[id].cost)return {error:'셸 코인이 부족해요.'};if(pool&&pool[id]<=0)return {error:`${HEROES[id].name}의 모집 풀이 비었어요.`};const slot=s.bench.indexOf(null);if(slot<0)return {error:'대기석을 비워주세요.'};s.gold-=HEROES[id].cost;if(pool)pool[id]--;s.bench[slot]=unit(id);s.shop[index]=null;return {notices:merge(s)};}
+export function buy(s,index,pool=null){if(s.phase!=='prep')return {error:'준비 단계에 모집할 수 있어요.'};const id=s.shop[index];if(id===null||id===undefined)return {error:'이미 모집했습니다.'};if(s.gold<HEROES[id].cost)return {error:'셸 코인이 부족해요.'};if(pool&&pool[id]<=0)return {error:`${HEROES[id].name}의 모집 풀이 비었어요.`};const slot=s.bench.indexOf(null);if(slot<0)return {error:'대기석을 비워주세요.'};const before=chainOf(s,id);s.gold-=HEROES[id].cost;if(pool)pool[id]--;s.bench[slot]=unit(id);s.shop[index]=null;const notices=merge(s),after=chainOf(s,id);
+ if(after>before){const node=CHAIN[after-1],msg=`공명 체인 ${after} · ${node.name}`;const star=notices.findIndex(n=>n.startsWith(HEROES[id].name));if(star>=0)notices[star]+=` · ${msg}`;else notices.push(`${HEROES[id].name} ${msg}`);}
+ return {notices,chain:after};}
 export function move(s,from,to){if(s.phase!=='prep'||!['board','bench'].includes(from?.area)||!['board','bench'].includes(to?.area))return false;if(!Number.isInteger(from.i)||!Number.isInteger(to.i)||from.i<0||to.i<0||from.i>=s[from.area].length||to.i>=s[to.area].length)return false;const a=s[from.area][from.i],b=s[to.area][to.i];if(!a)return false;if(from.area==='bench'&&to.area==='board'&&!b&&s.board.filter(Boolean).length>=capacity(s))return false;[s[from.area][from.i],s[to.area][to.i]]=[b,a];return true;}
 export function equip(s,uid,index){if(s.phase!=='prep'||!s.inventory[index])return false;const u=[...s.board,...s.bench].find(u=>u?.uid===uid);if(!u)return false;const next=s.inventory.splice(index,1)[0];if(u.echo)s.inventory.push(u.echo);u.echo=next;return true;}
 export function unequip(s,uid){if(s.phase!=='prep')return false;const u=[...s.board,...s.bench].find(u=>u?.uid===uid);if(!u?.echo)return false;s.inventory.push(u.echo);u.echo=null;return true;}
@@ -96,18 +115,19 @@ export function enemies(round){const arr=Array(12).fill(null),n=Math.min(6,2+Mat
 // original solo API: b.counts, b.mods, b.energy), the enemy side is b.foe.
 // A side with npc=true is a PvE phantom: no traits, echoes, augments or concerto.
 const ctxOf=(b,f)=>f.side==='ally'?b:b.foe;
-function fighter(u,side,slot,own,oppCounts,npcScale){
- const h=HEROES[u.id],scale=[0,1,1.9,3.5][u.star];let hp=h.hp*scale,atk=h.atk*scale;
+function fighter(u,side,slot,own,oppCounts,npcScale,chain=0){
+ const h=HEROES[u.id],scale=[0,1,1.9,3.5][u.star]*(chain>=1?1.08:1);let hp=h.hp*scale,atk=h.atk*scale;
  if(npcScale){hp*=.66+npcScale.round*.08;atk*=.60+npcScale.round*.055;if(npcScale.round%3===0){hp*=1.3;atk*=1.13;}if(npcScale.elite){hp*=1.25;atk*=1.16;}}
  else{if(own.mods.has('bulwark'))hp*=1.25;if(u.echo==='turtle')hp*=1.3;if(u.echo==='rider')atk*=1.2;}
  if(active(oppCounts,'응결'))atk*=.88;
  const pl=!own.npc;
- return {...u,side,slot,hp,max:hp,atk,shield:pl?((active(own.counts,'조율')?160:0)+(own.mods.has('bulwark')?150:0)+(u.echo==='turtle'?220:0)):0,mana:0,threshold:Math.max(2,4-(pl&&own.mods.has('overdrive')?1:0)-(pl&&u.echo==='heron'?1:0)),hits:0,damage:0,healed:0,extras:0,charge:0,buff:0,mark:false,lupa:0};
+ return {...u,side,slot,hp,max:hp,atk,shield:pl?((active(own.counts,'조율')?160:0)+(own.mods.has('bulwark')?150:0)+(u.echo==='turtle'?220:0)+(chain>=5?120:0)):0,mana:0,threshold:Math.max(2,4-(pl&&own.mods.has('overdrive')?1:0)-(pl&&u.echo==='heron'?1:0)-(chain>=2?1:0)),hits:0,damage:0,healed:0,extras:0,charge:0,buff:0,mark:false,lupa:0,frazzle:0,chain};
 }
 function baseBattle(counts,mods,rng,foe){return {fighters:[],counts,mods,rng,tick:0,energy:active(counts,'조율')?20:0,bursts:0,chains:0,events:[],ended:false,winner:null,foe};}
 export function makeBattle(s,enemy,rng=Math.random){
  const counts=traits(s.board),b=baseBattle(counts,new Set(s.augments),rng,{counts:{},mods:new Set(),energy:0,bursts:0,npc:true});
- b.fighters=[...s.board.flatMap((u,i)=>u?[fighter(u,'ally',i,b,{},null)]:[]),...enemy.flatMap((u,i)=>u?[fighter(u,'enemy',i,b.foe,counts,{round:s.round,elite:s.elite})]:[])];
+ const ch=chainMap(s);
+ b.fighters=[...s.board.flatMap((u,i)=>u?[fighter(u,'ally',i,b,{},null,ch(u.id))]:[]),...enemy.flatMap((u,i)=>u?[fighter(u,'enemy',i,b.foe,counts,{round:s.round,elite:s.elite})]:[])];
  return b;
 }
 // Player vs player: both boards get their own traits, echoes and augments. Concerto bursts fire automatically.
@@ -115,14 +135,15 @@ export function makeDuel(a,o,rng=Math.random){
  const ca=traits(a.board),co=traits(o.board);
  const b=baseBattle(ca,new Set(a.augments||[]),rng,{counts:co,mods:new Set(o.augments||[]),energy:active(co,'조율')?20:0,bursts:0,npc:false});
  b.pvp=true;
- b.fighters=[...a.board.flatMap((u,i)=>u?[fighter(u,'ally',i,b,co,null)]:[]),...o.board.flatMap((u,i)=>u?[fighter(u,'enemy',i,b.foe,ca,null)]:[])];
+ const cha=chainMap(a),cho=chainMap(o);
+ b.fighters=[...a.board.flatMap((u,i)=>u?[fighter(u,'ally',i,b,co,null,cha(u.id))]:[]),...o.board.flatMap((u,i)=>u?[fighter(u,'enemy',i,b.foe,ca,null,cho(u.id))]:[])];
  return b;
 }
 const sideStats=(b,side)=>b.fighters.filter(f=>f.side===side).map(f=>({uid:f.uid,id:f.id,damage:f.damage,healed:f.healed,extras:f.extras}));
 function emit(b,e){const ev={...e,energy:b.energy,stats:sideStats(b,'ally'),states:b.fighters.map(f=>({uid:f.uid,hp:f.hp,shield:f.shield,mana:f.mana,charge:f.charge}))};if(b.pvp){ev.foeEnergy=b.foe.energy;ev.foeStats=sideStats(b,'enemy');}b.events.push(ev);}
 function energy(b,a,n){const c=ctxOf(b,a);if(c.npc)return;c.energy=Math.min(100,c.energy+n*(c.mods.has('concerto')?1.4:1));}
 function heal(b,a,f,n){if(f.hp<=0)return;const value=n*(a.echo==='bell'?1.5:1),gain=Math.min(value,f.max-f.hp);f.hp+=gain;a.healed+=gain;if(a.id===10)f.shield+=Math.max(0,value-gain)*.5;if(gain>0)emit(b,{from:a.uid,to:f.uid,kind:'heal',amount:Math.round(gain)});}
-function damage(b,a,f,n,kind='hit'){if(!f||f.hp<=0||a.hp<=0)return;const c=ctxOf(b,a),pl=!c.npc;let val=n;if(pl){if(a.echo==='crown'&&['hit','extra','coop'].includes(kind))val*=1.3;if(kind==='ult'){if(active(c.counts,'용융'))val*=1.2;if(active(c.counts,'공명'))val*=1.35;if(a.echo==='jue')val*=1.45;}if(kind==='coop'){if(f.mark)val*=1.25;if(c.mods.has('duet'))val*=1.6;}}const shield=Math.min(f.shield,val);f.shield-=shield;const dealt=Math.min(f.hp,val-shield);f.hp-=dealt;a.damage+=dealt+shield;if(['coop','extra'].includes(kind)){a.extras++;b.chains++;}if(pl){energy(b,a,kind==='hit'?4:kind==='coop'?6:2);if(kind==='coop')for(const jin of b.fighters.filter(x=>x.side===a.side&&x.id===0&&x.hp>0))jin.charge=Math.min(12,jin.charge+(c.mods.has('duet')?2:1));}emit(b,{from:a.uid,to:f.uid,kind,amount:Math.round(dealt+shield),kill:f.hp<=0});if(pl&&active(c.counts,'인멸'))heal(b,a,a,(dealt+shield)*.15);if(f.hp<=0&&a.echo==='rider')heal(b,a,a,a.max*.2);}
+function damage(b,a,f,n,kind='hit'){if(!f||f.hp<=0||a.hp<=0)return;const c=ctxOf(b,a),pl=!c.npc;let val=n;if(pl){if(a.echo==='crown'&&['hit','extra','coop'].includes(kind))val*=1.3;if(kind==='ult'){if(a.chain>=4)val*=1.25;if(active(c.counts,'용융'))val*=1.2;if(active(c.counts,'공명'))val*=1.35;if(a.echo==='jue')val*=1.45;}if(kind==='coop'){if(f.mark)val*=1.25;if(c.mods.has('duet'))val*=1.6;}}const shield=Math.min(f.shield,val);f.shield-=shield;const dealt=Math.min(f.hp,val-shield);f.hp-=dealt;a.damage+=dealt+shield;if(['coop','extra'].includes(kind)){a.extras++;b.chains++;}if(pl){energy(b,a,kind==='hit'?4:kind==='coop'?6:2);if(kind==='coop')for(const jin of b.fighters.filter(x=>x.side===a.side&&x.id===0&&x.hp>0))jin.charge=Math.min(12,jin.charge+(c.mods.has('duet')?2:1));}emit(b,{from:a.uid,to:f.uid,kind,amount:Math.round(dealt+shield),kill:f.hp<=0});if(pl&&active(c.counts,'인멸'))heal(b,a,a,(dealt+shield)*.15);if(f.hp<=0&&a.echo==='rider')heal(b,a,a,a.max*.2);}
 function finishCheck(b){const ally=b.fighters.some(f=>f.side==='ally'&&f.hp>0),enemy=b.fighters.some(f=>f.side==='enemy'&&f.hp>0);if(!ally||!enemy||b.tick>=60){b.ended=true;b.winner=ally&&!enemy?'ally':b.pvp&&ally&&enemy?'draw':'enemy';}return b.ended;}
 export function burst(b,side='ally'){const c=side==='ally'?b:b.foe;if(b.ended||c.npc||c.energy<100)return [];b.events=[];c.energy=0;c.bursts++;const allies=b.fighters.filter(f=>f.side===side&&f.hp>0);if(!allies.length)return [];const lead=allies.reduce((a,f)=>f.atk>a.atk?f:a);emit(b,{from:lead.uid,kind:'burst',side,name:'협주 · 공명 해방'});for(const a of allies){const foe=b.fighters.filter(f=>f.side!==side&&f.hp>0).sort((x,y)=>x.hp-y.hp)[0];damage(b,a,foe,a.atk*(c.mods.has('concerto')?3.36:2.4),'extra');a.mana=Math.min(a.threshold-1,a.mana+1);}c.energy=0;finishCheck(b);emit(b,{kind:'sync'});return b.events;}
 function liberate(b,a,h,foes,friends,target){
@@ -136,7 +157,8 @@ function liberate(b,a,h,foes,friends,target){
  else if(id===15){for(const f of foes())damage(b,a,f,a.atk*1.5,'ult');for(const f of friends())f.shield+=80*a.star;}
  else if(id===14||id===22){a.buff=4;for(const f of foes())damage(b,a,f,a.atk*(id===14?1.8:1.4),'ult');}
  else if(id===11){damage(b,a,target(),a.atk*(3+(1-a.hp/a.max)*2),'ult');}
- else if(id===16){for(const f of friends())heal(b,a,f,110*a.star);for(const f of foes()){f.mark=true;damage(b,a,f,a.atk*1.1,'ult');}}
+ else if(id===16){for(const f of friends())heal(b,a,f,110*a.star);for(const f of foes()){f.mark=true;f.frazzle=Math.min(6,f.frazzle+2);damage(b,a,f,a.atk*1.1,'ult');}}
+ else if(id===24){for(const f of foes()){const stacks=f.frazzle;f.frazzle=0;damage(b,a,f,a.atk*1.3*(1+stacks*.35),'ult');}}
  else if(id===17){for(const f of friends())if(f.lupa<3){f.lupa++;f.atk*=1.1;}damage(b,a,target(),a.atk*2.4,'ult');}
  else if(id===18){const before=a.damage;for(const f of foes())damage(b,a,f,a.atk*1.3,'ult');const weak=friends().sort((x,y)=>x.hp/x.max-y.hp/y.max)[0];if(weak)heal(b,a,weak,(a.damage-before)*.5);}
  else if(id===19){a.buff=4;damage(b,a,target(),a.atk*2.6,'ult');}
@@ -146,10 +168,13 @@ function liberate(b,a,h,foes,friends,target){
  else{a.buff=4;if(id===1||id===7)for(const f of foes())damage(b,a,f,a.atk*1.6,'ult');else damage(b,a,target(),a.atk*2.6,'ult');}
 }
 const EXTRA_ON_BUFF=[1,6,7,12,13,14,19,22],BUFF_EXTRA_KIND=[12,14,19];
-export function step(b){if(b.ended)return [];b.events=[];b.tick++;const actors=b.fighters.filter(f=>f.hp>0);for(let i=actors.length-1;i>0;i--){const j=Math.floor(b.rng()*(i+1));[actors[i],actors[j]]=[actors[j],actors[i]];}for(const a of actors){if(a.hp<=0)continue;const foes=()=>b.fighters.filter(f=>f.side!==a.side&&f.hp>0);const friends=()=>b.fighters.filter(f=>f.side===a.side&&f.hp>0);const target=()=>foes().sort((x,y)=>Math.floor(x.slot/6)-Math.floor(y.slot/6)||Math.abs(x.slot%6-a.slot%6)-Math.abs(y.slot%6-a.slot%6))[0];if(!target())break;const c=ctxOf(b,a),pl=!c.npc,h=HEROES[a.id];a.hits++;a.mana++;let base=a.atk*(pl&&active(c.counts,'연격')&&h.role==='연격'?1.25:1);if(a.id===3){a.charge=Math.min(10,a.charge+1);base*=1+a.charge*.045;}if(a.buff>0){a.buff--;if([3,5].includes(a.id))base*=1.65;}damage(b,a,target(),base,'hit');if(a.id===5&&a.buff>0)heal(b,a,a,a.max*.04);
+export function step(b){if(b.ended)return [];b.events=[];b.tick++;const actors=b.fighters.filter(f=>f.hp>0);for(let i=actors.length-1;i>0;i--){const j=Math.floor(b.rng()*(i+1));[actors[i],actors[j]]=[actors[j],actors[i]];}for(const a of actors){if(a.hp<=0)continue;const foes=()=>b.fighters.filter(f=>f.side!==a.side&&f.hp>0);const friends=()=>b.fighters.filter(f=>f.side===a.side&&f.hp>0);const target=()=>foes().sort((x,y)=>Math.floor(x.slot/6)-Math.floor(y.slot/6)||Math.abs(x.slot%6-a.slot%6)-Math.abs(y.slot%6-a.slot%6))[0];if(!target())break;const c=ctxOf(b,a),pl=!c.npc,h=HEROES[a.id];a.hits++;a.mana++;let base=a.atk*(pl&&active(c.counts,'연격')&&h.role==='연격'?1.25:1);if(a.id===3){a.charge=Math.min(10,a.charge+1);base*=1+a.charge*.045;}if(a.buff>0){a.buff--;if([3,5].includes(a.id))base*=1.65;}const victim=target();damage(b,a,victim,base,'hit');if(a.id===24&&victim)victim.frazzle=Math.min(6,victim.frazzle+1);if(a.id===5&&a.buff>0)heal(b,a,a,a.max*.04);
  if(pl&&((active(c.counts,'기류')&&a.hits%3===0)||(c.mods.has('bloom')&&h.role==='연격')))damage(b,a,target(),a.atk*(c.mods.has('bloom')?.35:.6),'extra');
  if(a.buff>0&&EXTRA_ON_BUFF.includes(a.id)){if(a.id===7)for(const f of foes())damage(b,a,f,a.atk*.5,'extra');else damage(b,a,target(),a.atk*.7,BUFF_EXTRA_KIND.includes(a.id)?'extra':'coop');}
  if(a.mana>=a.threshold&&foes().length){a.mana=0;emit(b,{from:a.uid,kind:'skill',name:h.skill});liberate(b,a,h,foes,friends,target);
+ if(a.chain>=6&&foes().length&&a.hp>0){emit(b,{from:a.uid,kind:'skill',name:`${h.skill} · 메아리`,echo:true});a.atk*=.6;liberate(b,a,h,foes,friends,target);a.atk/=.6;}
+ if(a.chain>=3&&a.hp>0){const team=friends().filter(f=>f.uid!==a.uid).sort((x,y)=>((x.slot-a.slot+12)%12)-((y.slot-a.slot+12)%12)),next=team[0],t=target();if(next&&t){emit(b,{from:next.uid,to:t.uid,kind:'intro',name:'변주 입장'});damage(b,next,t,next.atk*.8,'extra');}}
+ if(a.chain>=5)energy(b,a,8);
  if(pl){if(active(c.counts,'전도'))energy(b,a,10);if(active(c.counts,'회절'))for(const f of friends())heal(b,a,f,40*a.star);if(a.echo==='bell')energy(b,a,8);let supports=friends().filter(f=>f.uid!==a.uid&&HEROES[f.id].role==='협동');if(!active(c.counts,'협동'))supports=supports.filter(f=>f.id===9&&f.buff>0).slice(0,1);else supports=supports.slice(0,2);for(const support of supports){const f=target();if(!f)break;damage(b,support,f,support.atk*(support.id===9&&support.buff>0?1.5:1),'coop');if(support.id===9&&support.buff>0)support.buff--;}}
  }
  if(finishCheck(b))break;
