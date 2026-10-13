@@ -205,3 +205,178 @@ body.low-motion .sp-body{animation:none}
 .chain-list div.on{color:#dbe9f7}.chain-list div.on b{color:#0a1220;background:var(--hero,#8be0ff);border-color:transparent}
 .chain-head{display:flex;justify-content:space-between;font-size:9px;color:#9fb0c8;margin-top:8px}
 .chain-head b{color:#f6d58c}
+
+/* ══ 2026-10-13 명조 UI 스킨 ══════════════════════════════════════════
+   잉크빛 무채색 패널 + 크림/금색 강조, 모서리 눈금, 속성 색(--el), 코스트 등급 색(--tier).
+   기존 규칙을 덮어쓰는 블록이라 파일 끝에 둡니다. */
+:root{--bg:#0b0d11;--gold:#e9cf8e;--cream:#f1e9d4;--text:#ecebe6;--muted:#8f949d;--line:#ffffff17;--line2:#ffffff2e;--tick:#e9cf8eaa;
+ --panel-bg:linear-gradient(180deg,#171a21f0,#0f1116f4);
+ --ticks:linear-gradient(var(--tick),var(--tick)) 0 0/12px 1px no-repeat,linear-gradient(var(--tick),var(--tick)) 0 0/1px 12px no-repeat,linear-gradient(var(--tick),var(--tick)) 100% 100%/12px 1px no-repeat,linear-gradient(var(--tick),var(--tick)) 100% 100%/1px 12px no-repeat}
+body{background:repeating-linear-gradient(135deg,#ffffff04 0 1px,transparent 1px 26px),radial-gradient(ellipse at 50% -10%,#2b303b 0%,#13161c 45%,#08090c 100%);background-attachment:fixed;font-size:13px;color:var(--text)}
+button{background:#1a1d24;border:1px solid var(--line2);border-radius:2px;color:var(--text)}
+button:hover:not(:disabled){border-color:#e9cf8e8c;box-shadow:0 0 12px #e9cf8e1f;filter:none}
+button:focus-visible,a:focus-visible{outline-color:var(--gold)}
+.primary{background:linear-gradient(180deg,#f6eedb,#dccb9f);border-color:#f6eedb;color:#14161b;font-weight:800;letter-spacing:.04em;border-radius:3px;box-shadow:0 0 0 1px #00000040,0 0 18px #e9cf8e22}
+.primary:hover:not(:disabled){box-shadow:0 0 0 1px #00000040,0 0 24px #e9cf8e55;filter:brightness(1.04)}
+.primary:disabled{background:#2a2c31;color:#8f949d;border-color:#ffffff1f;box-shadow:none}
+
+/* header & heading */
+header{background:#0a0b0fe6;border-bottom:1px solid var(--line);position:relative}
+header:after{content:'';position:absolute;left:24px;bottom:-1px;width:140px;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+.brand{color:var(--gold)}.brand>span{color:#f3f0e8}.brand small{font-size:9px;color:#8f949d}
+nav button{background:transparent;font-size:11px;padding:7px 11px}
+.mission small{font-size:10px;letter-spacing:.24em;color:#b8a273}
+h1{font-size:17px}
+.resources small{font-size:10px;letter-spacing:.18em;color:var(--muted)}
+.resources strong{font-size:25px}
+#life{color:#f39aa8}
+.route-node{background:#14171d;border-color:#ffffff30;color:#7d828b;font-size:13px}
+.route-node.current{background:#2a2517;border-color:var(--gold);color:var(--gold);box-shadow:0 0 16px #e9cf8e40}
+.route-node.complete{border-color:#8fd8c9;color:#bdeee4;background:#14201f}
+
+/* panels */
+.panel{background:var(--ticks),var(--panel-bg);border:1px solid var(--line);border-radius:0;padding:15px 14px}
+.section-title{position:relative;padding-left:14px;font-size:13px;color:var(--text);border-bottom-color:var(--line)}
+.section-title:before{content:'';position:absolute;left:1px;top:5px;width:6px;height:6px;background:var(--gold);transform:rotate(45deg)}
+.section-title>span{font-size:10px;letter-spacing:.22em;color:#9d906f}
+
+/* synergies: active rows + compact chips for the rest */
+.trait{opacity:1;padding:9px 0;gap:10px;border-bottom:1px solid #ffffff0a}
+.trait-icon{width:32px;height:32px;border-radius:50%;clip-path:none;border:1px solid color-mix(in srgb,var(--el) 50%,transparent);background:radial-gradient(circle,#22252d,#14161b);color:var(--el);font-size:16px}
+.trait.active .trait-icon{background:radial-gradient(circle,color-mix(in srgb,var(--el) 60%,#14161b),#14161b 78%);color:#fff;border-color:var(--el);box-shadow:0 0 14px color-mix(in srgb,var(--el) 45%,transparent)}
+.trait b{font-size:13px}
+.trait small{font-size:11px;color:#9a9fa8;line-height:1.5}
+.trait.active small{color:#cfd2d8}
+.trait-count{display:flex;align-items:center;gap:4px;font:inherit}
+.trait-count i{width:7px;height:7px;transform:rotate(45deg);border:1px solid #ffffff45}
+.trait-count i.on{background:var(--el);border-color:var(--el);box-shadow:0 0 6px var(--el)}
+.trait-count em{font:700 13px 'Rajdhani',sans-serif;font-style:normal;color:var(--muted);margin-left:3px}
+.trait.active .trait-count em{color:var(--gold)}
+.trait-empty{font-size:12px;line-height:1.6;margin:6px 0}
+.trait-off{grid-column:1/-1;padding:10px 0 4px}
+.trait-off small{font-size:10px;letter-spacing:.14em;color:var(--muted)}
+.trait-off>div{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.trait-off span{font-size:11px;padding:3px 7px;border:1px solid #ffffff14;color:#9ea2aa;background:#ffffff05;cursor:help}
+.trait-off span:hover{color:var(--el);border-color:color-mix(in srgb,var(--el) 50%,transparent)}
+
+/* selected resonator info */
+.roster-title{margin-top:16px}
+#detail p{font-size:12px;color:#b5b9c1}
+#detail small{font-size:11px;color:#9a9fa8}
+.detail-hero .portrait{width:52px;height:52px;border:1px solid var(--gold)}
+.detail-hero b{font-size:14px}
+.skill-name{font-size:13px}
+.equipped{border-color:#e9cf8e33;background:#e9cf8e08}.equipped b{font-size:12px}
+.chain-head{font-size:11px}.chain-list div{font-size:11px;grid-template-columns:24px 1fr}.chain-list div b{font-size:12px}
+#sell,#unequip{font-size:12px;padding:9px}
+
+/* arena */
+.arena{background:radial-gradient(ellipse at 50% 50%,#ffffff0c,transparent 62%),linear-gradient(180deg,#1a1d24,#111318 52%,#171a20);border:1px solid #ffffff21;border-bottom:2px solid #e9cf8e55;border-radius:3px;box-shadow:inset 0 0 90px #000b,0 12px 24px #0006}
+.arena-sky{background:#e9cf8e12}
+.arena-orbit,.arena-orbit:after{border-color:#ffffff10}.arena-orbit:after{color:#ffffff08}
+.board-label{color:#e98394;font-size:10px}.board-label b{font-size:12px}
+.board-foot{color:#a7acb5;font-size:10px}.board-foot b{font-size:11px}
+.divider{color:#b1b5bd;font-size:12px}.divider i{background:linear-gradient(90deg,transparent,#e9cf8e55,transparent)}
+.live{font-size:10px}.arena-head h2{font-size:15px}
+.controls button{font-size:12px}
+.tile .portrait{border:1px solid color-mix(in srgb,var(--tier,var(--hero)) 75%,transparent);border-radius:3px}
+.tile .portrait:after{box-shadow:inset 0 -3px 0 var(--tier,transparent)}
+.tile.selected .portrait{border:2px solid var(--cream);box-shadow:0 0 18px #f1e9d466}
+.el-icon{position:absolute;right:12%;top:2px;z-index:3;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:9px;line-height:1;background:#0d0f14eb;color:var(--el);border:1px solid color-mix(in srgb,var(--el) 65%,transparent)}
+.chain-badge{top:auto;bottom:24%;right:12%;font-size:9px}
+.stars{color:#ffe08a;font-size:10px}
+.unit-name{font-size:11px}
+.health{background:#07080b}.health i{background:linear-gradient(90deg,#7de8a0,#c9f5a5)}
+.tile.rival .health i,.tile.phantom .health i{background:linear-gradient(90deg,#ff6a7a,#ff9aa3)}
+.shield{font-size:9px}
+
+/* bench, echo tray */
+.bench{background:#0f1116d9;border:1px solid var(--line);border-radius:2px}
+.bench-heading b{font-size:12px;color:#c4c8cf}.bench-heading small{font-size:11px;color:var(--muted)}
+.echo-tray{border-bottom-color:var(--line)}.echo-tray>span{font-size:12px;color:var(--gold)}.echo-tray>small,.echo-tray .muted{font-size:11px}
+.echo-tray button{font-size:11px;padding:4px 8px}
+
+/* recruitment */
+.shop-heading h2{font-size:15px;color:var(--gold)}.shop-heading small{font-size:10px;letter-spacing:.2em}
+.shop-hint{font-size:11px;color:var(--muted)}
+.shop-heading button{font-size:12px}
+.shop{background:#0f1116e6;border:1px solid var(--line);border-radius:2px;box-shadow:none}
+.shop-card{background:#15171c;border:1px solid color-mix(in srgb,var(--tier) 60%,transparent);border-bottom:4px solid var(--tier);border-radius:2px}
+.shop-card:after{background:linear-gradient(0deg,#0b0c10f7 0%,#0b0c10b8 42%,transparent 80%)}
+.shop-card:hover:not(:disabled){box-shadow:0 0 20px color-mix(in srgb,var(--tier) 45%,transparent)}
+.shop-card[data-tier="4"]{background:linear-gradient(180deg,#2a2416,#15171c 60%)}
+.cost{background:var(--tier);color:#111217;border:0;font-size:14px;padding:1px 7px 1px 9px;clip-path:polygon(7px 0,100% 0,100% 100%,0 100%,0 7px)}
+.card-copy small{font-size:11px;color:var(--el)}
+.el-dot{font-style:normal;margin-right:4px}
+.card-copy strong{font-size:17px}
+.card-copy>span{font-size:11px;color:#a9adb5}
+.card-copy b{font-size:11px;color:var(--gold)}
+.owned{font-size:10px;padding:2px 6px;background:#0d0f14e6;color:var(--cream)}
+.merge-ready{box-shadow:0 0 18px #e9cf8e66}
+.chain-pill{font-size:10px;top:28px}
+.shop-card.poor{opacity:1;filter:grayscale(.8) brightness(.62)}
+.short{position:absolute;left:0;right:0;top:40%;z-index:4;text-align:center;font-size:12px;font-weight:700;color:#ffc0c0;background:#000a;padding:3px 0}
+.sold{font-size:12px;color:var(--muted)}
+
+/* concerto (협주) */
+#resonance{background:#111318f0;border:1px solid #e9cf8e59;border-radius:999px;width:156px;height:42px;padding:5px 18px}
+#resonance>span{font-size:12px}
+#resonance b{font-size:12px;color:var(--gold)}
+#resonance i{background:linear-gradient(90deg,#e9cf8e1c,#e9cf8e70)}
+#resonance.ready{border-color:var(--cream);color:#fff8e2;box-shadow:0 0 22px #e9cf8e77}
+#resonance.ready i{background:linear-gradient(90deg,#e9cf8e66,#f6eedbcc)}
+#resonance.ready>span,#resonance.ready b{color:#14161b}
+
+/* right panel */
+#battleStats small,.encounter-tag small{font-size:11px}
+#battleStats strong{font-size:22px}
+.live-damage-row div{font-size:11px}
+.encounter-tag b{font-size:12px;color:var(--gold)}
+.augment-small b{font-size:12px}.augment-small small{font-size:11px}
+#log p{font-size:11px;color:#9a9fa8}#log p:first-child{color:var(--text)}
+#augments .muted{font-size:11px;line-height:1.6}
+.pchip{background:#15171c;border-color:var(--line2)}.pchip.me{border-color:var(--gold)}
+
+/* dialogs */
+dialog{background:var(--ticks),linear-gradient(180deg,#1b1e25,#0f1116);border:1px solid #ffffff1f;border-top:2px solid var(--gold);border-radius:3px}
+dialog::backdrop{background:#050608cc}
+.eyebrow{font-size:12px;letter-spacing:.3em;color:#cdb47b}
+dialog h2{font-size:26px}
+dialog>div>p{font-size:13px;color:#b9bdc5}
+.help-steps p{font-size:13px;color:#b5b9c1}
+.mode-grid button{background:linear-gradient(160deg,#1e2129,#121419);border-color:#ffffff26}
+.mode-grid .mode-multi{background:linear-gradient(160deg,#2a2333,#141218);border-color:#b48cf266}
+.mode-grid small{font-size:11px;color:#a5a9b1}.mode-grid p{font-size:12px}
+.starter-grid button{background:#121418;border-color:#ffffff24}
+.starter-grid button:hover:not(:disabled){border-color:var(--gold)}
+.augment-choices button,.route-choices button{background:#15171c;border-color:#ffffff24}
+.augment-choices button:hover:not(:disabled),.route-choices button:hover:not(:disabled){border-color:var(--gold)}
+#toast{background:#15171cf5;border-color:var(--gold);color:var(--cream);font-size:13px}
+footer{font-size:10px;color:#5d626b}
+
+@media(max-width:700px){
+ nav button{font-size:10px;padding:6px 8px}
+ .trait small{display:none}.trait b{font-size:11px}.trait-icon{width:26px;height:26px;font-size:13px}
+ .trait-off span{font-size:10px;padding:2px 5px}
+ .card-copy strong{font-size:13px}.card-copy small{font-size:9px}.card-copy>span{font-size:9px}
+ .cost{font-size:11px}.owned,.chain-pill{font-size:9px}
+ .unit-name{font-size:8px}.stars{font-size:8px}.el-icon{width:13px;height:13px;font-size:7px}
+ .board-label,.board-foot{font-size:8px}.divider{font-size:9px}
+ .bench-heading b{font-size:10px}.bench-heading small{font-size:9px}
+ #resonance{width:112px;height:34px;padding:4px 12px}#resonance>span,#resonance b{font-size:9px}
+ .resources small{font-size:9px}.resources strong{font-size:20px}
+}
+.trait:not(.active){padding:6px 0}
+.trait:not(.active) small{display:none}
+.trait:not(.active) .trait-icon{width:26px;height:26px;font-size:13px}
+.trait:not(.active) b{font-size:12px;color:#c4c8cf}
+@media(min-width:1300px){.layout{grid-template-columns:232px minmax(0,1fr) 204px}}
+.starter-grid small{font-size:11px;color:#cdb47b}.starter-grid h3{font-size:17px}.starter-grid p{font-size:12px;color:#b5b9c1}.starter-grid b{font-size:12px;color:var(--gold)}
+.augment-choices h3{font-size:16px}.augment-choices p{font-size:12px}.augment-choices small,.route-choices small{font-size:11px}.route-choices p{font-size:12px}
+.result-stat span{font-size:11px}.damage-chart{font-size:12px}
+@media(max-width:700px){.starter-grid small{font-size:10px}.starter-grid h3{font-size:15px}.starter-grid p{font-size:11px}}
+@media(max-width:700px){
+ header{gap:8px}.brand{font-size:20px;gap:6px;min-width:0}.brand>span{font-size:15px;white-space:nowrap}.brand small{display:none}
+ nav{flex-shrink:0}nav button{font-size:10px;padding:6px 7px}
+ header:after{left:12px;width:90px}
+}
