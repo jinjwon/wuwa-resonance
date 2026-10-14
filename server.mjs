@@ -49,7 +49,7 @@ async function api(req,res,url){
  let body;try{body=await readBody(req);}catch{return json(res,400,{error:'잘못된 요청입니다.'});}
  if(route==='create'){
   if(rooms.size>=40)return json(res,503,{error:'열린 방이 너무 많아요.'});
-  const room=new Room(newCode());const r=room.addPlayer(body.name);rooms.set(room.code,room);
+  const room=new Room(newCode());const r=room.addPlayer(body.name);rooms.set(room.code,room);if(r.player&&body.settings&&typeof body.settings==='object')room.setSettings(r.player.id,body.settings);
   return json(res,200,{code:room.code,id:r.player.id,token:r.player.token});
  }
  const room=rooms.get(String(body.code||'').toUpperCase().trim());

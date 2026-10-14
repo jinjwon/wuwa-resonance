@@ -1,8 +1,10 @@
 // Multiplayer room rules (TFT-style lobby). Pure game logic: no HTTP here, so tests can drive it directly.
-import {HEROES,STARTERS,ECHOS,AUGMENTS,fresh,unit,chooseStarter,capacity,levelUp,levelCost,makePool,rollPool,buy,move,equip,unequip,sell,merge,traits,runDuel,duelDamage,multiIncome,MAX_CAPACITY} from './engine.js';
+import {HEROES,STARTERS,ECHOS,AUGMENTS,fresh,unit,chooseStarter,capacity,levelUp,levelCost,makePool,rollPool,buy,move,equip,unequip,sell,merge,traits,runDuel,runPve,encounter,bossFor,duelDamage,multiIncome,MAX_CAPACITY} from './engine.js';
 
-export const MAX_PLAYERS=8;
+export const MAX_PLAYERS=5;
 export const START_LIFE=100;
+// 방장이 로비에서 고르는 규칙. opening: 처음 N라운드는 잔상 토벌, pveEvery: N라운드마다 명식전(0이면 없음).
+export const ROOM_OPTIONS={prepSeconds:[25,40,60],startLife:[60,100,150],pveEvery:[0,4,5,6],opening:[0,1,2,3],maxPlayers:[2,3,4,5]};
 const STARTER_SECONDS=25;
 const BOT_NAMES=['잔향 봇 · 알파','잔향 봇 · 베타','잔향 봇 · 감마','잔향 봇 · 델타','잔향 봇 · 엡실론','잔향 봇 · 제타','잔향 봇 · 에타'];
 const token=()=>Array.from({length:24},()=>'abcdefghijkmnpqrstuvwxyz23456789'[Math.floor(Math.random()*32)]).join('');
@@ -29,13 +31,13 @@ function compactEvents(events){
 function replayMs(events){let ms=2200;for(const e of events)ms+=e.kind==='burst'?650:e.kind==='skill'?260:e.kind==='ult'?130:e.kind==='sync'?0:70;return ms;}
 
 export class Room{
- constructor(code,{rng=Math.random,now=()=>Date.now(),manual=false,prepSeconds=40}={}){
-  Object.assign(this,{code,rng,now,manual,prepSeconds,players:[],phase:'lobby',round:0,pool:makePool(),deadline:null,timer:null,hostId:null,feed:[],battleSeq:0,listeners:new Set(),version:0,createdAt:now(),lastActive:now()});
+ constructor(code,{rng=Math.random,now=()=>Date.now(),manual=false,prepSeconds=40,startLife=START_LIFE,pveEvery=5,opening=2,maxPlayers=MAX_PLAYERS}={}){
+  Object.assign(this,{code,rng,now,manual,prepSeconds,startLife,pveEvery,opening,maxPlayers,seed:Math.floor(rng()*1e9),players:[],phase:'lobby',round:0,pool:makePool(),deadline:null,timer:null,hostId:null,feed:[],battleSeq:0,listeners:new Set(),version:0,createdAt:now(),lastActive:now()});
  }
  // ── membership ──
  addPlayer(name,{bot=false}={}){
   if(this.phase!=='lobby')return {error:'이미 대전이 시작된 방입니다.'};
-  if(this.players.length>=MAX_PLAYERS)return {error:`방 인원은 최대 ${MAX_PLAYERS}명입니다.`};
+  if(this.players.length>=this.maxPlayers)return {error:`방 인원은 최대 ${this.maxPlayers}명입니다.`};
   name=cleanName(name)||(bot?'봇':'공명자');
   if(this.players.some(p=>p.name===name))name=(name.slice(0,10)+' '+(this.players.length+1)).trim();
   const p={id:'p'+(this.players.length+1)+Math.floor(this.rng()*1e6).toString(36),token:token(),name,bot,s:null,alive:true,place:null,ready:false,connected:bot,lastOpp:null,lastWon:false,battle:null,watched:false,pickedStarter:false,lastDamage:0};
@@ -52,15 +54,19 @@ export class Room{
   if(this.hostId===id)this.hostId=this.players.find(x=>!x.bot&&!x.left)?.id??null;
   this.checkOver();this.touch();return {ok:true};
  }
- setSettings(byId,{prepSeconds}){if(byId!==this.hostId||this.phase!=='lobby')return {error:'방장만 로비에서 변경할 수 있어요.'};if([25,40,60].includes(prepSeconds))this.prepSeconds=prepSeconds;this.touch();return {ok:true};}
+ setSettings(byId,opts={}){if(byId!==this.hostId||this.phase!=='lobby')return {error:'방장만 로비에서 변경할 수 있어요.'};
+  for(const [k,list] of Object.entries(ROOM_OPTIONS)){const v=Number(opts[k]);if(opts[k]===undefined||!list.includes(v))continue;if(k==='maxPlayers'&&v<this.players.length)continue;this[k]=v;}
+  this.touch();return {ok:true};}
+ // 라운드 종류: 'tacet'(잔상 토벌) · 'overlord'(명식전) · 'pvp'
+ roundKind(r=this.round){if(r<=this.opening)return 'tacet';if(this.pveEvery&&r%this.pveEvery===0)return 'overlord';return 'pvp';}
  // ── flow ──
  start(byId){
   if(byId!==this.hostId)return {error:'방장만 시작할 수 있어요.'};
   if(!['lobby','over'].includes(this.phase))return {error:'이미 진행 중입니다.'};
   if(this.players.length<2)return {error:'2명 이상 모이면 시작할 수 있어요. 봇을 추가해 보세요.'};
   this.players=this.players.filter(p=>!p.left);
-  this.pool=makePool();this.round=0;this.feed=[];
-  for(const p of this.players){Object.assign(p,{s:{...fresh(),life:START_LIFE,phase:'starter',streak:0,pending:[]},alive:true,place:null,ready:false,battle:null,lastOpp:null,lastWon:false,pickedStarter:false,lastDamage:0});}
+  this.pool=makePool();this.round=0;this.feed=[];this.seed=Math.floor(this.rng()*1e9);
+  for(const p of this.players){Object.assign(p,{s:{...fresh(),life:this.startLife,phase:'starter',streak:0,pending:[]},alive:true,place:null,ready:false,battle:null,lastOpp:null,lastWon:false,pickedStarter:false,lastDamage:0});}
   this.phase='starter';this.setDeadline(STARTER_SECONDS);
   for(const p of this.players)if(p.bot)this.pickStarter(p,STARTERS[Math.floor(this.rng()*STARTERS.length)].id);
   this.touch();return {ok:true};
@@ -96,6 +102,8 @@ export class Room{
   if(this.phase!=='prep')return;
   const alive=this.players.filter(p=>p.alive);
   for(const p of alive){while(p.s.pending.length)this.resolvePending(p,0);p.s.phase='battle';p.ready=false;p.watched=p.bot||!p.connected;}
+  const kind=this.roundKind();
+  if(kind!=='pvp'){const seq=++this.battleSeq;let longest=0;this.pendingResults=[];for(const p of alive)longest=Math.max(longest,this.fightPve(p,kind,seq));this.phase='battle';this.setDeadline(Math.min(95,Math.ceil(longest/1000)+4));this.touch();return;}
   // Pairing: shuffle a few times and keep the order with the fewest rematches.
   let best=null,bestScore=Infinity;
   for(let k=0;k<12;k++){const order=shuffle(alive,this.rng);let score=0;for(let i=0;i+1<order.length;i+=2)if(order[i].lastOpp===order[i+1].id||order[i+1].lastOpp===order[i].id)score++;if(score<bestScore){best=order;bestScore=score;}if(!score)break;}
@@ -120,14 +128,31 @@ export class Room{
   this.feed.unshift({round:this.round,a:a.name,o:o.name+(ghost?' (잔상)':''),winner:outcomeA==='win'?a.name:outcomeA==='draw'?null:o.name+(ghost?' (잔상)':''),dmg:Math.max(dmgA,dmgO)});this.feed.splice(16);
   return replayMs(events);
  }
+// 잔상·명식 전투: 모든 생존자가 각자 같은 적 편성과 싸운다. 패배하면 생존력 감소, 승리하면 코인과 에코 보상.
+ fightPve(p,kind,seq){
+  const boss=kind==='overlord',bossInfo=boss?bossFor(this.round,{seed:this.seed,every:this.pveEvery||3}):null;
+  const enemy=encounter(this.round,{seed:this.seed,boss,every:this.pveEvery||3}),{b,events}=runPve(p.s,enemy,this.rng);
+  const outcome=b.winner==='ally'?'win':'lose',alive=b.fighters.filter(f=>f.side==='enemy'&&f.hp>0).length,dmg=outcome==='win'?0:2+Math.floor(this.round/4)+alive*(boss?2:1);
+  const fighters=b.fighters.map(f=>({uid:f.uid,id:f.id,star:f.star,side:f.side,max:f.max,threshold:f.threshold,echo:f.echo}));
+  const totals=side=>Math.round(b.fighters.filter(f=>f.side===side).reduce((n,f)=>n+f.damage,0));
+  const name=boss?`명식 · ${bossInfo.name}`:'잔상 무리';
+  p.battle={seq,round:this.round,ghost:false,pve:kind,opponent:{id:'pve',name},enemyBoard:snapshotBoard(enemy),fighters,events:compactEvents(events),outcome,damageTaken:dmg,dealt:totals('ally'),received:totals('enemy')};
+  this.pendingResults.push({p,outcome,dmg,pve:kind,boss:bossInfo});
+  this.feed.unshift({round:this.round,a:p.name,o:name,winner:outcome==='win'?p.name:name,dmg});this.feed.splice(16);
+  return replayMs(events);
+ }
  endBattle(){
   if(this.phase!=='battle')return;
   const fallen=[];
-  for(const {p,outcome,dmg} of this.pendingResults||[]){
+  for(const r of this.pendingResults||[]){const {p,outcome,dmg}=r;
    if(!p.alive)continue;
-   p.lastWon=outcome==='win';p.lastDamage=dmg;
+   p.lastDamage=dmg;
+   if(r.pve){// PvE는 연승/연패에 포함하지 않고 보상을 준다(명식은 그 명식의 에코를 반드시 후보에 포함)
+    p.lastWon=false;if(outcome==='win'){p.s.wins++;p.s.gold+=r.boss?3:2;const pool=ECHOS.map(e=>e.id).filter(id=>id!==r.boss?.echo);const choices=r.boss?.echo?[r.boss.echo,...pickThree(pool.map(id=>({id})),this.rng).slice(0,2)]:pickThree(ECHOS,this.rng);p.s.pending.push({type:'echo',choices,from:r.boss?.name||'잔상'});}
+   }else{
+   p.lastWon=outcome==='win';
    p.s.streak=outcome==='win'?Math.max(0,p.s.streak||0)+1:outcome==='lose'?Math.min(0,p.s.streak||0)-1:0;
-   if(outcome==='win')p.s.wins++;
+   if(outcome==='win')p.s.wins++;}
    p.s.life=Math.max(0,p.s.life-dmg);if(p.s.life<=0)fallen.push(p);
   }
   this.pendingResults=[];this.eliminate(fallen);
@@ -157,7 +182,7 @@ export class Room{
   if(t==='leave')return this.removePlayer(p.id);
   if(t==='addBot')return this.addBot(p.id);
   if(t==='kick')return this.removePlayer(String(msg.id),p.id);
-  if(t==='settings')return this.setSettings(p.id,{prepSeconds:+msg.prepSeconds});
+  if(t==='settings')return this.setSettings(p.id,msg);
   if(t==='start')return this.start(p.id);
   if(t==='lobby')return this.backToLobby(p.id);
   if(t==='starter'){const r=this.pickStarter(p,String(msg.id));return r;}
@@ -217,8 +242,9 @@ export class Room{
  onDeadline(){this.timer=null;if(this.phase==='starter')this.beginPrep();else if(this.phase==='prep')this.beginBattle();else if(this.phase==='battle')this.endBattle();}
  touch(){this.version++;this.lastActive=this.now();for(const fn of this.listeners)try{fn();}catch{}}
  publicView(){
-  return {code:this.code,phase:this.phase,round:this.round,deadline:this.deadline,serverNow:this.now(),hostId:this.hostId,prepSeconds:this.prepSeconds,battleSeq:this.battleSeq,
-   players:this.players.map(p=>({id:p.id,name:p.name,bot:p.bot,connected:p.connected,ready:p.ready,alive:p.alive,place:p.place,left:!!p.left,life:p.s?.life??START_LIFE,level:p.s?capacity(p.s):3,streak:p.s?.streak||0,lastDamage:p.lastDamage,lastWon:p.lastWon,board:p.s?snapshotBoard(p.s.board):[],augments:p.s?.augments||[],starter:p.s?.starter||null,picked:p.pickedStarter})),
+  const nextKind=this.roundKind(this.phase==='lobby'||this.phase==='starter'?1:this.round);
+  return {code:this.code,phase:this.phase,round:this.round,deadline:this.deadline,serverNow:this.now(),hostId:this.hostId,prepSeconds:this.prepSeconds,startLife:this.startLife,pveEvery:this.pveEvery,opening:this.opening,maxPlayers:this.maxPlayers,roundKind:nextKind,boss:nextKind==='overlord'?bossFor(this.round,{seed:this.seed,every:this.pveEvery||3}).name:null,battleSeq:this.battleSeq,
+   players:this.players.map(p=>({id:p.id,name:p.name,bot:p.bot,connected:p.connected,ready:p.ready,alive:p.alive,place:p.place,left:!!p.left,life:p.s?.life??this.startLife,level:p.s?capacity(p.s):3,streak:p.s?.streak||0,lastDamage:p.lastDamage,lastWon:p.lastWon,board:p.s?snapshotBoard(p.s.board):[],augments:p.s?.augments||[],starter:p.s?.starter||null,picked:p.pickedStarter})),
    feed:this.feed};
  }
  privateView(p){return {id:p.id,s:p.s,battleSeq:p.battle?.seq??null};}

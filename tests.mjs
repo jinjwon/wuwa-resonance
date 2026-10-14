@@ -106,24 +106,24 @@ test('공용 풀: 비어 있으면 등장·모집 불가, 판매 시 반환',()=
 });
 test('출전 확장 비용·상한',()=>{const s={...fresh(),phase:'prep',gold:100};assert.equal(capacity(s),3);assert.equal(levelCost(s),4);assert.ok(levelUp(s).ok);assert.equal(capacity(s),4);assert.equal(s.gold,96);s.round=9;while(!levelUp(s).error);assert.equal(capacity(s),8);s.phase='battle';assert.ok(levelUp(s).error);});
 // ── 방(로비) ──
-function playRoom(n,seed){
- const r=new Room('T',{rng:rng(seed),manual:true});const host=r.addPlayer('호스트').player;host.connected=true;
+function playRoom(n,seed,opts={}){
+ const r=new Room('T',{rng:rng(seed),manual:true,...opts});const host=r.addPlayer('호스트').player;host.connected=true;
  for(let i=1;i<n;i++)r.addBot(host.id);
  assert.ok(r.start(host.id).ok);r.act(host,{type:'starter',id:'dragon'});
  let guard=0;while(r.phase!=='over'&&guard++<80){if(r.phase==='prep'){if(host.alive)r.botTurn(host);r.beginBattle();}if(r.phase==='battle'){assert.ok(r.pool.every(x=>x>=0));r.endBattle();}}
  return {r,host};
 }
-test('방: 2~8인 대전이 끝까지 진행되고 순위가 1..N으로 매겨진다',()=>{
- for(const n of [2,3,5,8]){const {r}=playRoom(n,n*7);assert.equal(r.phase,'over',`${n}인`);assert.deepEqual(r.players.map(p=>p.place).sort((a,b)=>a-b),Array.from({length:n},(_,i)=>i+1));assert.ok(r.round<60);assert.ok(r.pool.every(x=>x>=0));}
+test('방: 2~5인 대전이 잔상·명식 라운드를 섞어 끝까지 진행되고 순위가 1..N',()=>{
+ for(const n of [2,3,5]){const {r}=playRoom(n,n*7);assert.equal(r.phase,'over',`${n}인`);assert.deepEqual(r.players.map(p=>p.place).sort((a,b)=>a-b),Array.from({length:n},(_,i)=>i+1));assert.ok(r.round<60);assert.ok(r.pool.every(x=>x>=0));}
 });
 test('방: 홀수 인원은 잔상과 싸우고 잔상 주인은 체력이 줄지 않는다',()=>{
- const r=new Room('T',{rng:rng(2),manual:true});const h=r.addPlayer('A').player;h.connected=true;r.addBot(h.id);r.addBot(h.id);r.start(h.id);r.act(h,{type:'starter',id:'storm'});
+ const r=new Room('T',{rng:rng(2),manual:true,opening:0,pveEvery:0});const h=r.addPlayer('A').player;h.connected=true;r.addBot(h.id);r.addBot(h.id);r.start(h.id);r.act(h,{type:'starter',id:'storm'});
  assert.equal(r.phase,'prep');r.beginBattle();const ghosts=r.players.filter(p=>p.battle?.ghost);assert.equal(ghosts.length,1);
  const lifeBefore=new Map(r.players.map(p=>[p.id,p.s.life]));const hits=r.pendingResults.length;assert.equal(hits,3);r.endBattle();
  const damaged=r.players.filter(p=>p.s.life<lifeBefore.get(p.id)).length;assert.ok(damaged<=2);
 });
 test('방: 권한·보상 선택·준비 완료·중도 이탈',()=>{
- const r=new Room('T',{rng:rng(9),manual:true});const a=r.addPlayer('A').player,b=r.addPlayer('B').player;a.connected=b.connected=true;
+ const r=new Room('T',{rng:rng(9),manual:true,opening:0,pveEvery:0});const a=r.addPlayer('A').player,b=r.addPlayer('B').player;a.connected=b.connected=true;
  assert.ok(r.start(b.id).error);assert.ok(r.addBot(b.id).error);assert.ok(r.start(a.id).ok);
  r.act(a,{type:'starter',id:'dragon'});assert.equal(r.phase,'starter');assert.ok(r.act(a,{type:'buy',i:0}).error);
  r.act(b,{type:'starter',id:'triumph'});assert.equal(r.phase,'prep');assert.equal(r.round,1);
@@ -167,4 +167,55 @@ test('젠니: 타격으로 광휘 축적, 페비가 광휘를 더하고 해방�
 });
 test('새 시작 팀(젠니·카르티시아)은 유대를 켜고 첫 구역을 돌파',()=>{
  for(const [kit,t] of [['frazzle','회절'],['erosion','기류']])for(let seed=1;seed<=10;seed++){const s=starter(kit);assert.ok(active(traits(s.board),t));assert.ok(active(traits(s.board),'조율'));assert.equal(fight(s,seed).b.winner,'ally',`${kit}:${seed}`);}
+});
+
+// ── 2026-10-14: 잔상 · 명식 · 유대 단계 · 공명 편성 · 규칙 설정 ──
+import {ENEMIES,unitInfo,encounter,bossFor,tier,TEAMS,teamBonus,normRules} from './engine.js';
+test('잔상·명식 데이터: id 100부터, 보스 라운드에 명식 1체와 호위 잔상',()=>{
+ assert.ok(ENEMIES.every((e,i)=>e.id===100+i&&unitInfo(e.id)===e));
+ const b=encounter(3,{seed:7}).filter(Boolean).map(u=>unitInfo(u.id));
+ assert.equal(b.filter(e=>e.kind==='overlord').length,1);assert.ok(b.length>=2);
+ const ids=x=>x.map(u=>u&&u.id);assert.deepEqual(ids(encounter(5,{seed:7})),ids(encounter(5,{seed:7})));
+ assert.ok(encounter(2,{seed:1}).filter(Boolean).every(u=>unitInfo(u.id).kind!=='overlord'));
+ assert.equal(bossFor(9,{seed:1}).kind,'overlord');
+});
+test('명식 해방은 고유 효과(보호막·침묵 등)를 낸다',()=>{
+ for(const key of ['turtle','fallacy','heron']){const e=ENEMIES.find(x=>x.key===key);const s=starter();s.round=6;
+  const b=makeBattle(s,[unit(e.id),unit(ENEMIES[0].id)],()=>.5);const boss=b.fighters.find(f=>f.id===e.id),mate=b.fighters.find(f=>f.id===ENEMIES[0].id);
+  for(const f of b.fighters.filter(f=>f.side==='ally')){f.hp=f.max=1e6;f.atk=1;f.mana=1;}boss.mana=boss.threshold-1;const all=step(b);
+  assert.ok(all.some(ev=>ev.from===boss.uid&&ev.kind==='skill'),key);
+  if(key==='turtle')assert.ok(mate.shield>0);
+  if(key==='fallacy')assert.ok(b.fighters.filter(f=>f.side==='ally').every(f=>f.mana<=1));
+  if(key==='heron')assert.ok(all.some(ev=>ev.kind==='heal'&&ev.from===boss.uid)||boss.hp===boss.max);}
+});
+test('유대 단계: 2/3/4명에 따라 강해진다',()=>{
+ assert.equal(tier({회절:1},'회절'),0);assert.equal(tier({회절:2},'회절'),1);assert.equal(tier({회절:3},'회절'),2);assert.equal(tier({회절:5},'회절'),3);
+ const hit=n=>{const s=starter();s.board.fill(null);s.board[0]=unit(12);s.round=9;const b=makeBattle(s,[unit(7,3)],()=>.5);b.counts={용융:n};const f=b.fighters.find(f=>f.side==='ally');f.mana=f.threshold-1;return step(b).find(e=>e.from===f.uid&&e.kind==='ult').amount;};
+ assert.ok(hit(2)<hit(3)&&hit(3)<hit(4));
+});
+test('공명 편성: 세 명이 모두 있으면 보너스',()=>{
+ const t=TEAMS.find(t=>t.id==='zani');const s=starter('frazzle');assert.ok(teamBonus(s.board).active.includes('zani'));assert.equal(teamBonus(s.board).atk,t.bonus.atk);
+ s.board[8]=null;assert.equal(teamBonus(s.board).active.length,0);
+ const on=starter('frazzle'),off=starter('frazzle');off.board[8]=unit(10);
+ const atk=x=>makeBattle(x,[unit(ENEMIES[0].id)],()=>.5).fighters.find(f=>f.id===24).atk;assert.ok(atk(on)>atk(off));
+});
+test('원정 규칙: 길이·생존력·코인·난이도 반영',()=>{
+ const s=fresh({rounds:12,life:100,gold:20,difficulty:'hard'});assert.equal(s.life,100);assert.equal(s.gold,20);assert.equal(s.rules.rounds,12);
+ assert.deepEqual(normRules({rounds:7,difficulty:'nope'}),{rounds:9,life:80,gold:10,difficulty:'normal'});
+ const hp=d=>{const x=fresh({difficulty:d});chooseStarter(x,'dragon');x.round=4;return makeBattle(x,[unit(ENEMIES[0].id)],()=>.5).fighters.find(f=>f.side==='enemy').max;};
+ assert.ok(hp('easy')<hp('normal')&&hp('normal')<hp('hard'));
+ s.round=11;s.phase='reward';assert.ok(advance(s));assert.equal(s.round,12);s.phase='reward';assert.equal(advance(s),false);
+ chooseStarter(s,'dragon');s.phase='prep';assert.ok(restore(JSON.stringify(s)));
+});
+test('방: 최대 5명, 1·2라운드 잔상 토벌, 5라운드 명식전과 명식 에코 보상',()=>{
+ const r=new Room('T',{rng:rng(4),manual:true});const h=r.addPlayer('A').player;h.connected=true;for(let i=0;i<4;i++)assert.ok(r.addBot(h.id).player);assert.ok(r.addBot(h.id).error);
+ assert.equal(r.roundKind(1),'tacet');assert.equal(r.roundKind(3),'pvp');assert.equal(r.roundKind(5),'overlord');
+ assert.ok(r.setSettings(h.id,{pveEvery:4,startLife:150,maxPlayers:2}).ok);assert.equal(r.pveEvery,4);assert.equal(r.startLife,150);assert.equal(r.maxPlayers,5,'현재 인원보다 작게 줄일 수 없음');
+ r.setSettings(h.id,{pveEvery:5});r.start(h.id);r.act(h,{type:'starter',id:'dragon'});assert.equal(h.s.life,150);
+ r.beginBattle();assert.equal(r.players.filter(p=>p.battle?.pve==='tacet').length,5);assert.ok(h.battle.enemyBoard.filter(Boolean).every(u=>u.id>=100));
+ let guard=0;while(r.round<5&&guard++<10){r.endBattle();if(r.phase==='prep'){for(const p of r.players)if(p.alive)r.botTurn(p);r.beginBattle();}}
+ assert.equal(r.round,5);const fought=r.players.filter(p=>p.alive&&p.battle?.pve==='overlord');assert.ok(fought.length>0);
+ const boss=bossFor(5,{seed:r.seed,every:5});r.endBattle();
+ const winners=fought.filter(p=>r.feed.some(f=>f.round===5&&f.a===p.name&&f.winner===p.name));
+ for(const p of winners)if(boss.echo)assert.ok(p.s.pending.some(x=>x.type==='echo'&&x.choices.includes(boss.echo))||p.bot);
 });

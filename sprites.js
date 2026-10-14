@@ -163,9 +163,55 @@ function palette(P){
   h,H:P.H||mix(h,-.26),g:P.g||mix(h,.3),o:'#e9c45a',O:'#a8822e',y:'#f6f3ea',Y:'#cfc9bb',x,X:mix(x,.55),
   m:'#e3eaf3',M:'#9aa6b8',n:'#7a5a3a',z:'#2b2530',Z:'#6b5f72',i:'#f5a3c0',l:'#62c46e',f:'#d8344a',F:'#8a1a2a'};
 }
+
+// ── 잔상 · 명식 도트: 모양 7종을 속성 색으로 칠하고 명식은 장식을 더한다 ──
+// c 속성색 · C 그늘 · t 밝은 속성색 · d 어두운 몸 · D 더 어두운 · x 발광 · X 밝은 발광 · y 흰색 · k 검정 · o 금색
+const SHAPE={
+ blob:['.........d....d.........','........cccccccc........','......cccccccccccc......','.....cccccccccccccc.....','....ccyyccccccccyycc....','....ccykccccccccykcc....',
+  'd...ccccccckkccccccc...d','dd..cccttttttttttccc..dd','d...ccttttttttttttcc...d','....cCttttttttttttCc....','.....CCttttttttttCC.....','......CCCCCCCCCCCC......','........CCCCCCCC........','..........dddd..........'],
+ prism:['...........tt...........','..........cttc..........','.........ccttcc.........','........cccttccc........','.......ccccttcccc.......','......cccccttccccc......',
+  '.....cccccxxxxccccc.....','....ccccccxXXxccccCC....','....cccccxXXXXxcccCC....','.....ccccccxxcccCCC.....','......ccccccccCCCC......','.......cccccCCCCC.......','........ccccCCCC........',
+  '.........cccCCC.........','..........ccCC..........','...........cC...........','........................','.........t....t.........'],
+ beast:['................d.d.....','...............dcdcd....','..............dccccccd..','.d...........dccccykcct.','dd..........dcccccccccc.','.dd.........dcccccccttt.',
+  '..ddcccccccccccccccc....','...ccccccccccccccccc....','...cccccccccccccccc.....','...CccccccccccccccC.....','...CCcccccccccccCCC.....','....CC.CC....CC.CC......',
+  '....CC.CC....CC.CC......','....dd.dd....dd.dd......','....dd.dd....dd.dd......'],
+ knight:['..........tttt..........','.........dddddd.........','........dddddddd........','.......dddddddddd.......','.......ddtddddtdd.......','.......dddddddddd.......',
+  '........dddkkddd........','......CCccccccccCC......','....CCCccccttccccCCC....','....CCcccccttcccccCC....','....dd.ccccttcccc.dd....','....dd.ccccttcccc.dd....',
+  '....dd.ccccttcccc.dd....','....tt.dddddddddd.tt....','.......cccccccccc.......','......cccccccccccc......','......cccc....cccc......','......CCC......CCC......',
+  '......ddd......ddd......','......ddd......ddd......','.....dddd......dddd.....'],
+ bird:['..............ddd.......','.............dkdtt......','..............dd........','..............dd........','.............ddd........','............dddd........',
+  '.cc........ccccc.....cc.','cccc.....ccccccccc..cccc','ccccccccccccccccccccccc.','.CCcccccccccccccccccCC..','...CCCcccccccccccCCC....','.......CCcccccccCC......',
+  '..........CCCCC.........','..........d...d.........','..........d...d.........','..........d...d.........','..........d...d.........','..........d...d.........',
+  '.........dd..dd.........'],
+ turtle:['..........oo............','.........oooo...........','.........oOOo...........','........dddddddd........','......ddccccccccdd......','.....dccttccccttccd.....',
+  '....dccccccttccccccd....','...dcctcccccccccctccd...','...dccccccttttccccccd...','..ddddddddddddddddddd...','..CCCCCCCCCCCCCCCCCCdyk.','...CC.CC.......CC.CCdd..',
+  '...CC.CC.......CC.CC....','...dd.dd.......dd.dd....'],
+ dragon:['..................dd....','.................dccd...','................dcykcc..','................dccccctt','...............dcccccd..','..............dcccd.....',
+  '.............dcccd......','...t........dcccd.......','..tct......dcccd........','..tcct....dcccd.........','...ccct..dcccd..........','....cccccccccd..........',
+  '.....ccccccccc..........','......CCCCCCCC..........','.....tt.....tt..........']
+};
+const FOE_ITEM={
+ crown:['o.o.o.o','ooooooo'],flame:['.x.x.','xXxXx','.xXx.'],halo:['..oooooo..','.o......o.','o........o'],mask:['yyyyyyyy'],
+ horns:['d......d','dd....dd','.d....d.'],bell:['.oo.','oOOo']
+};
+// key → [shape, [[item, x, yFromTop]], 명식 여부]
+const FOE_LOOK={crownless:['knight',[['crown',8,-2]]],rider:['knight',[['flame',9,-3]]],dreamless:['knight',[['mask',8,4]]],fallacy:['knight',[['halo',7,-3]]],
+ heron:['bird',[]],aix:['beast',[['horns',13,-2]]],turtle:['turtle',[]],mephis:['dragon',[]],jue:['dragon',[['crown',15,-2]]],
+ warrior:['knight',[]],wailer:['knight',[['horns',8,-1]]],bard:['knight',[['halo',7,-3]]],hunter:['knight',[]],drake:['dragon',[]]};
+function foeGrid(info){
+ const [shape,items]=FOE_LOOK[info.key]||[info.shape,[]],rows=SHAPE[shape]||SHAPE.blob,top=H-1-rows.length;
+ const c=info.color,boss=info.kind==='overlord',elite=info.kind==='elite';
+ const pal={c,C:mix(c,-.32),t:mix(c,.45),x:mix(c,.15),X:mix(c,.65),d:boss?'#1c1724':elite?'#2a2333':'#3a3446',D:'#141019',y:'#f6f3ea',k:'#121018',o:'#e9c45a',O:'#a8822e'};
+ const g=Array.from({length:H},()=>Array(W).fill(null));
+ const stamp=(art,ox,oy)=>art.forEach((row,j)=>[...row].forEach((ch,i)=>{const X=ox+i,Y=oy+j;if(ch!=='.'&&pal[ch]&&X>=0&&Y>=0&&X<W&&Y<H)g[Y][X]=pal[ch];}));
+ stamp(rows,0,top);for(const [name,x,dy] of items)stamp(FOE_ITEM[name],x,top+dy);
+ const out=g.map(r=>r.slice());for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!g[y][x]&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>g[y+dy]?.[x+dx]))out[y][x]=LINE;
+ return out;
+}
 const cache=new Map();
 // Builds the 24×32 pixel grid (array of rows of color strings or null). Exported for the sprite sheet tool.
 export function spriteGrid(key){
+ if(typeof key==='object')return foeGrid(key);
  const L=LOOK[key];if(!L)return null;const pal=palette({...L.pal,male:L.male});
  const g=Array.from({length:H},()=>Array(W).fill(null));
  const put=(x,y,code)=>{if(x>=0&&y>=0&&x<W&&y<H&&pal[code])g[y][x]=pal[code];};
@@ -181,22 +227,24 @@ export function spriteGrid(key){
  return out;
 }
 export function spriteUrl(key){
- if(cache.has(key))return cache.get(key);
+ const ck=typeof key==='object'?'foe:'+key.key:key;if(cache.has(ck))return cache.get(ck);
  const grid=spriteGrid(key)||spriteGrid('rover');
  const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');
  grid.forEach((row,y)=>row.forEach((col,x)=>{if(col){ctx.fillStyle=col;ctx.fillRect(x,y,1,1);}}));
- const url=c.toDataURL();cache.set(key,url);return url;
+ const url=c.toDataURL();cache.set(ck,url);return url;
 }
 export const SPRITE_SIZE={W,H};
 
 // Hand-made sprite images (assets/sprites/<key>.png, listed in index.json) replace the code-drawn pixels when present.
 // Each entry: {w,h,fx} — image size and the feet's horizontal position (0..1) so weapons/effects don't shift the stance.
 const ART={};
-if(typeof document!=='undefined')fetch('assets/sprites/index.json').then(r=>r.ok?r.json():{}).then(m=>Object.assign(ART,m)).catch(()=>{});
+// Enemy portraits (assets/enemies/<key>.png, index.json) are shown as round tokens in battle.
+const FOE_ART={};
+if(typeof document!=='undefined'){fetch('assets/sprites/index.json').then(r=>r.ok?r.json():{}).then(m=>Object.assign(ART,m)).catch(()=>{});fetch('assets/enemies/index.json').then(r=>r.ok?r.json():{}).then(m=>Object.assign(FOE_ART,m)).catch(()=>{});}
 const ART_BASE=250;// source sheet cell height that maps to one 24×32 sprite height
 export class SpriteStage{
  constructor(arena,heroes){
-  this.arena=arena;this.heroes=heroes;this.enabled=true;this.speed=1;this.units=new Map();
+  this.arena=arena;this.info=typeof heroes==='function'?heroes:id=>heroes[id];this.enabled=true;this.speed=1;this.units=new Map();
   this.layer=document.createElement('div');this.layer.id='sprites';this.layer.setAttribute('aria-hidden','true');arena.append(this.layer);
   new ResizeObserver(()=>this.layout()).observe(arena);
  }
@@ -206,12 +254,13 @@ export class SpriteStage{
  mount(fighters,{phantom=false}={}){
   this.clear();this.arena.classList.add('sprites-on');
   for(const f of fighters){
-   const h=this.heroes[f.id],look=LOOK[h.key]||{},art=ART[h.key];
+   const h=this.info(f.id),foe=f.id>=100,look=foe?{weapon:h.shape==='knight'||h.shape==='beast'?'sword':'orb'}:LOOK[h.key]||{},art=foe?(FOE_ART[h.key]&&{...FOE_ART[h.key],token:true}):ART[h.key];
    const el=document.createElement('div');el.className=`sprite ${f.side}${f.side==='enemy'&&phantom?' phantom':''} walking`;el.style.setProperty('--hero',h.color);
-   el.innerHTML=`<div class="sp-move"><div class="sp-hp"><i></i></div><img class="sp-body${art?' sp-art':''}" alt="" src="${art?`assets/sprites/${h.key}.png`:spriteUrl(h.key)}"><span class="sp-star">${'★'.repeat(f.star)}</span></div><div class="sp-shadow"></div>`;
+   el.innerHTML=`<div class="sp-move"><div class="sp-hp"><i></i></div><img class="sp-body${art?' sp-art':''}${art?.token?' sp-token':''}" alt="" src="${art?.token?`assets/enemies/${h.key}.png`:art?`assets/sprites/${h.key}.png`:spriteUrl(foe?h:h.key)}"><span class="sp-star">${'★'.repeat(f.star)}</span></div><div class="sp-shadow"></div>`;
    el.querySelector('.sp-body').style.animationDelay=`${-Math.random()*1.1}s`;
    this.layer.append(el);
-   this.units.set(f.uid,{el,move:el.firstElementChild,body:el.querySelector('.sp-body'),hp:el.querySelector('.sp-hp i'),side:f.side,melee:MELEE.has(look.weapon),max:f.max,dead:false,adv:0,art});
+   this.units.set(f.uid,{el,move:el.firstElementChild,body:el.querySelector('.sp-body'),hp:el.querySelector('.sp-hp i'),side:f.side,melee:MELEE.has(look.weapon),max:f.max,dead:false,adv:0,art,scale:foe&&h.kind==='overlord'?1.4:1});
+   if(foe&&h.kind==='overlord')el.classList.add('overlord');
   }
   this.layout();
   // March toward the front line, then settle into the idle bob.
@@ -221,8 +270,10 @@ export class SpriteStage{
  layout(){
   for(const [uid,u] of this.units){const pos=this.home(uid);if(!pos)continue;
    const k=Math.max(2,Math.min(5,Math.floor(pos.w*.8/W)));u.k=k;
-   if(u.art){u.hgt=Math.round(H*k*u.art.h/ART_BASE*1.12);u.wid=Math.round(u.hgt*u.art.w/u.art.h);u.body.style.left=`${Math.round((u.side==='enemy'?u.art.fx-.5:.5-u.art.fx)*u.wid)}px`;}
+   if(u.art?.token){u.hgt=Math.round(H*k*.78);u.wid=u.hgt;u.body.style.left='0px';}
+   else if(u.art){u.hgt=Math.round(H*k*u.art.h/ART_BASE*1.12);u.wid=Math.round(u.hgt*u.art.w/u.art.h);u.body.style.left=`${Math.round((u.side==='enemy'?u.art.fx-.5:.5-u.art.fx)*u.wid)}px`;}
    else{u.hgt=H*k;u.wid=W*k;}
+   if(u.scale!==1){u.hgt=Math.round(u.hgt*u.scale);u.wid=Math.round(u.wid*u.scale);}
    u.x=pos.x;u.y=Math.max(u.hgt+14,pos.y+(u.side==='ally'?-pos.h*.16:pos.h*.5)*u.adv);
    Object.assign(u.el.style,{left:`${u.x}px`,top:`${u.y}px`,zIndex:u.dead?0:Math.round(u.y)});u.body.style.width=`${u.wid}px`;u.body.style.height=`${u.hgt}px`;}
  }
@@ -260,3 +311,5 @@ export class SpriteStage{
  number(e){const u=this.units.get(e.to);if(!u||!e.amount)return;const el=document.createElement('span');el.className=`sp-num ${e.kind}`;el.textContent=`${e.kind==='heal'?'+':''}${e.amount}`;el.style.left=`${u.x+(Math.random()*18-9)}px`;el.style.top=`${u.y-(u.hgt||96)-6}px`;this.layer.append(el);el.animate([{transform:'translate(-50%,-100%) scale(1.25)',opacity:1},{transform:'translate(-50%,-100%) scale(1)',opacity:1,offset:.2},{transform:'translate(-50%,calc(-100% - 22px))',opacity:0}],{duration:760/this.speed,easing:'ease-out'}).onfinish=()=>el.remove();}
  victory(side){for(const u of this.units.values())if(u.side===side&&!u.dead){u.el.classList.add('cheer');}}
 }
+// Portrait image for an enemy tile: a dropped-in image (assets/sprites/<key>.png) or its code-drawn pixel sprite.
+export const foeSrc=info=>FOE_ART[info.key]?`assets/enemies/${info.key}.png`:spriteUrl(info);
