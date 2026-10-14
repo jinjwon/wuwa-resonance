@@ -189,6 +189,11 @@ export function spriteUrl(key){
 }
 export const SPRITE_SIZE={W,H};
 
+// Hand-made sprite images (assets/sprites/<key>.png, listed in index.json) replace the code-drawn pixels when present.
+// Each entry: {w,h,fx} — image size and the feet's horizontal position (0..1) so weapons/effects don't shift the stance.
+const ART={};
+if(typeof document!=='undefined')fetch('assets/sprites/index.json').then(r=>r.ok?r.json():{}).then(m=>Object.assign(ART,m)).catch(()=>{});
+const ART_BASE=250;// source sheet cell height that maps to one 24×32 sprite height
 export class SpriteStage{
  constructor(arena,heroes){
   this.arena=arena;this.heroes=heroes;this.enabled=true;this.speed=1;this.units=new Map();
@@ -201,12 +206,12 @@ export class SpriteStage{
  mount(fighters,{phantom=false}={}){
   this.clear();this.arena.classList.add('sprites-on');
   for(const f of fighters){
-   const h=this.heroes[f.id],look=LOOK[h.key]||{};
+   const h=this.heroes[f.id],look=LOOK[h.key]||{},art=ART[h.key];
    const el=document.createElement('div');el.className=`sprite ${f.side}${f.side==='enemy'&&phantom?' phantom':''} walking`;el.style.setProperty('--hero',h.color);
-   el.innerHTML=`<div class="sp-move"><div class="sp-hp"><i></i></div><img class="sp-body" alt="" src="${spriteUrl(h.key)}"><span class="sp-star">${'★'.repeat(f.star)}</span></div><div class="sp-shadow"></div>`;
+   el.innerHTML=`<div class="sp-move"><div class="sp-hp"><i></i></div><img class="sp-body${art?' sp-art':''}" alt="" src="${art?`assets/sprites/${h.key}.png`:spriteUrl(h.key)}"><span class="sp-star">${'★'.repeat(f.star)}</span></div><div class="sp-shadow"></div>`;
    el.querySelector('.sp-body').style.animationDelay=`${-Math.random()*1.1}s`;
    this.layer.append(el);
-   this.units.set(f.uid,{el,move:el.firstElementChild,body:el.querySelector('.sp-body'),hp:el.querySelector('.sp-hp i'),side:f.side,melee:MELEE.has(look.weapon),max:f.max,dead:false,adv:0});
+   this.units.set(f.uid,{el,move:el.firstElementChild,body:el.querySelector('.sp-body'),hp:el.querySelector('.sp-hp i'),side:f.side,melee:MELEE.has(look.weapon),max:f.max,dead:false,adv:0,art});
   }
   this.layout();
   // March toward the front line, then settle into the idle bob.
@@ -216,8 +221,10 @@ export class SpriteStage{
  layout(){
   for(const [uid,u] of this.units){const pos=this.home(uid);if(!pos)continue;
    const k=Math.max(2,Math.min(5,Math.floor(pos.w*.8/W)));u.k=k;
-   u.x=pos.x;u.y=Math.max(k*H+14,pos.y+(u.side==='ally'?-pos.h*.16:pos.h*.5)*u.adv);
-   Object.assign(u.el.style,{left:`${u.x}px`,top:`${u.y}px`,zIndex:u.dead?0:Math.round(u.y)});u.body.style.width=`${W*k}px`;u.body.style.height=`${H*k}px`;}
+   if(u.art){u.hgt=Math.round(H*k*u.art.h/ART_BASE*1.12);u.wid=Math.round(u.hgt*u.art.w/u.art.h);u.body.style.left=`${Math.round((u.side==='enemy'?u.art.fx-.5:.5-u.art.fx)*u.wid)}px`;}
+   else{u.hgt=H*k;u.wid=W*k;}
+   u.x=pos.x;u.y=Math.max(u.hgt+14,pos.y+(u.side==='ally'?-pos.h*.16:pos.h*.5)*u.adv);
+   Object.assign(u.el.style,{left:`${u.x}px`,top:`${u.y}px`,zIndex:u.dead?0:Math.round(u.y)});u.body.style.width=`${u.wid}px`;u.body.style.height=`${u.hgt}px`;}
  }
  anim(el,frames,ms,opts={}){if(!el)return;el._a?.cancel();el._a=el.animate(frames,{duration:ms/this.speed,easing:'ease-out',...opts});return el._a;}
  sync(states){for(const s of states){const u=this.units.get(s.uid);if(!u)continue;u.hp.style.width=`${Math.max(0,s.hp/u.max*100)}%`;if(s.hp<=0&&!u.dead)this.fall(u);}}
@@ -226,7 +233,7 @@ export class SpriteStage{
   const a=this.units.get(from),b=this.units.get(to);if(!a||!b||a.dead)return;
   const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
   if(this.enabled){
-   if(a.melee&&kind!=='coop'){const reach=Math.max(0,len-(b.k||3)*W*.7)/len;this.anim(a.move,[{transform:'none'},{transform:`translate(${dx*reach}px,${dy*reach}px) scale(1.06)`,offset:.45},{transform:'none'}],kind==='ult'?420:320);}
+   if(a.melee&&kind!=='coop'){const reach=Math.max(0,len-(b.wid||72)*.7)/len;this.anim(a.move,[{transform:'none'},{transform:`translate(${dx*reach}px,${dy*reach}px) scale(1.06)`,offset:.45},{transform:'none'}],kind==='ult'?420:320);}
    else{this.anim(a.move,[{transform:'none'},{transform:`translate(${-dx/len*5}px,${-dy/len*5}px)`,offset:.3},{transform:'none'}],240);this.bolt(a,b,color,kind);}
   }
   if(b.dead&&kind!=='ult')return;
@@ -235,21 +242,21 @@ export class SpriteStage{
  }
  flash(u){u.body.animate([{filter:'brightness(3.2) saturate(0)'},{filter:'none'}],{duration:180/this.speed,delay:110/this.speed});}
  bolt(a,b,color,kind){
-  const el=document.createElement('i');el.className=`sp-bolt ${kind}`;el.style.setProperty('--c',color);el.style.left=`${a.x}px`;el.style.top=`${a.y-(a.k||3)*H*.55}px`;this.layer.append(el);
-  const tx=b.x-a.x,ty=b.y-a.y-((b.k||3)-(a.k||3))*H*.55;
+  const el=document.createElement('i');el.className=`sp-bolt ${kind}`;el.style.setProperty('--c',color);el.style.left=`${a.x}px`;el.style.top=`${a.y-(a.hgt||96)*.55}px`;this.layer.append(el);
+  const tx=b.x-a.x,ty=b.y-a.y-((b.hgt||96)-(a.hgt||96))*.55;
   el.animate([{transform:'translate(-50%,-50%)'},{transform:`translate(calc(-50% + ${tx}px),calc(-50% + ${ty}px))`}],{duration:170/this.speed,easing:'linear'}).onfinish=()=>el.remove();
  }
- sparks(u,color,n=8){const y=u.y-(u.k||3)*H*.5;for(let i=0;i<n;i++){const s=document.createElement('i');s.className='sp-spark';s.style.cssText=`left:${u.x}px;top:${y}px;--c:${color}`;this.layer.append(s);const ang=i/n*Math.PI*2,d=18+Math.random()*16;s.animate([{transform:'translate(-50%,-50%)',opacity:1},{transform:`translate(calc(-50% + ${Math.cos(ang)*d}px),calc(-50% + ${Math.sin(ang)*d}px))`,opacity:0}],{duration:420/this.speed,easing:'ease-out'}).onfinish=()=>s.remove();}}
+ sparks(u,color,n=8){const y=u.y-(u.hgt||96)*.5;for(let i=0;i<n;i++){const s=document.createElement('i');s.className='sp-spark';s.style.cssText=`left:${u.x}px;top:${y}px;--c:${color}`;this.layer.append(s);const ang=i/n*Math.PI*2,d=18+Math.random()*16;s.animate([{transform:'translate(-50%,-50%)',opacity:1},{transform:`translate(calc(-50% + ${Math.cos(ang)*d}px),calc(-50% + ${Math.sin(ang)*d}px))`,opacity:0}],{duration:420/this.speed,easing:'ease-out'}).onfinish=()=>s.remove();}}
  cast(uid,color){const u=this.units.get(uid);if(!u||u.dead)return;
   const ring=document.createElement('i');ring.className='sp-ring';ring.style.cssText=`left:${u.x}px;top:${u.y-4}px;--c:${color}`;this.layer.append(ring);ring.animate([{transform:'translate(-50%,-50%) scale(.2)',opacity:1},{transform:'translate(-50%,-50%) scale(1.6)',opacity:0}],{duration:520/this.speed}).onfinish=()=>ring.remove();
   if(this.enabled){this.anim(u.move,[{transform:'none'},{transform:'translateY(-16px) scale(1.12)',offset:.4},{transform:'none'}],380);this.sparks(u,color,8);}
  }
- heal(uid){const u=this.units.get(uid);if(!u||u.dead||!this.enabled)return;for(let i=0;i<3;i++){const s=document.createElement('i');s.className='sp-heal';s.style.cssText=`left:${u.x+(i-1)*9}px;top:${u.y-(u.k||3)*H*.6}px`;this.layer.append(s);s.animate([{transform:'translate(-50%,0)',opacity:1},{transform:'translate(-50%,-18px)',opacity:0}],{duration:520/this.speed,delay:i*70/this.speed}).onfinish=()=>s.remove();}}
+ heal(uid){const u=this.units.get(uid);if(!u||u.dead||!this.enabled)return;for(let i=0;i<3;i++){const s=document.createElement('i');s.className='sp-heal';s.style.cssText=`left:${u.x+(i-1)*9}px;top:${u.y-(u.hgt||96)*.6}px`;this.layer.append(s);s.animate([{transform:'translate(-50%,0)',opacity:1},{transform:'translate(-50%,-18px)',opacity:0}],{duration:520/this.speed,delay:i*70/this.speed}).onfinish=()=>s.remove();}}
  intro(from,to,color){const a=this.units.get(from);if(!a||a.dead)return;
   if(this.enabled){const ghost=a.body.cloneNode();ghost.className='sp-after';Object.assign(ghost.style,{left:`${a.x}px`,top:`${a.y}px`,width:a.body.style.width,height:a.body.style.height});this.layer.append(ghost);ghost.animate([{opacity:.7},{opacity:0}],{duration:360/this.speed}).onfinish=()=>ghost.remove();}
   this.strike(from,to,'extra',color);}
  rally(side){for(const u of this.units.values())if(u.side===side&&!u.dead&&this.enabled)this.anim(u.move,[{transform:'none'},{transform:'translateY(-12px)',offset:.35},{transform:'none'}],420);}
  // Floating damage / heal number above the sprite (tile popups are hidden while sprites are on).
- number(e){const u=this.units.get(e.to);if(!u||!e.amount)return;const el=document.createElement('span');el.className=`sp-num ${e.kind}`;el.textContent=`${e.kind==='heal'?'+':''}${e.amount}`;el.style.left=`${u.x+(Math.random()*18-9)}px`;el.style.top=`${u.y-(u.k||3)*H-6}px`;this.layer.append(el);el.animate([{transform:'translate(-50%,-100%) scale(1.25)',opacity:1},{transform:'translate(-50%,-100%) scale(1)',opacity:1,offset:.2},{transform:'translate(-50%,calc(-100% - 22px))',opacity:0}],{duration:760/this.speed,easing:'ease-out'}).onfinish=()=>el.remove();}
+ number(e){const u=this.units.get(e.to);if(!u||!e.amount)return;const el=document.createElement('span');el.className=`sp-num ${e.kind}`;el.textContent=`${e.kind==='heal'?'+':''}${e.amount}`;el.style.left=`${u.x+(Math.random()*18-9)}px`;el.style.top=`${u.y-(u.hgt||96)-6}px`;this.layer.append(el);el.animate([{transform:'translate(-50%,-100%) scale(1.25)',opacity:1},{transform:'translate(-50%,-100%) scale(1)',opacity:1,offset:.2},{transform:'translate(-50%,calc(-100% - 22px))',opacity:0}],{duration:760/this.speed,easing:'ease-out'}).onfinish=()=>el.remove();}
  victory(side){for(const u of this.units.values())if(u.side===side&&!u.dead){u.el.classList.add('cheer');}}
 }

@@ -517,3 +517,6 @@ nav button .ico{width:15px;height:15px}
  .arena{border-radius:3px}
  .board-foot{padding-right:118px}
 }
+/* 이미지 도트(assets/sprites)는 원본이 고해상도라 부드럽게 축소 */
+.sp-body.sp-art{image-rendering:auto;position:relative;filter:drop-shadow(0 2px 2px #0008)}
+.sprite.phantom .sp-body.sp-art{filter:saturate(.5) brightness(.88) drop-shadow(0 0 3px #ff4d6dcc)}
