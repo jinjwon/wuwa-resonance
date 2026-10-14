@@ -380,3 +380,140 @@ footer{font-size:10px;color:#5d626b}
  nav{flex-shrink:0}nav button{font-size:10px;padding:6px 7px}
  header:after{left:12px;width:90px}
 }
+
+/* ── 아이콘 · 로고 (icons.js) ───────────────────────────────────── */
+.ico{width:1.15em;height:1.15em;vertical-align:-.2em;flex-shrink:0}
+nav button,.controls button,.shop-heading button,#sell,#unequip{display:inline-flex;align-items:center;justify-content:center;gap:.45em}
+nav button .ico{width:15px;height:15px}
+#help{padding-inline:8px}
+#life,#gold{display:inline-flex;align-items:center;gap:6px}
+#life .ico,#gold .ico{width:19px;height:19px}
+.trait-icon .ico{width:17px;height:17px}
+.trait-off span{display:inline-flex;align-items:center;gap:4px}.trait-off .ico{width:12px;height:12px;color:var(--el)}
+.el-icon .ico{width:10px;height:10px}
+.el-dot .ico{width:12px;height:12px;vertical-align:-.15em}
+.echo-badge .ico{width:12px;height:12px}
+.route-node .ico{width:13px;height:13px;vertical-align:middle}
+.encounter-tag b,.route-choices b,.augment-choices b{display:inline-flex;align-items:center;gap:6px}
+.encounter-tag b .ico,.route-choices b .ico{width:15px;height:15px;color:var(--gold)}
+.mode-icon .ico{width:34px;height:34px;stroke-width:1.3}
+.scout-traits span{display:inline-flex;align-items:center;gap:4px}.scout-traits .ico{width:13px;height:13px}
+.pchip small .ico,.standings small .ico,.scout-life .ico{width:12px;height:12px;color:#f39aa8}
+.echo-label{display:inline-flex;align-items:center;gap:6px}.echo-label:before{content:'';width:8px;height:8px;border:1.5px solid var(--gold);transform:rotate(45deg)}
+#fight .ico{width:16px;height:16px}
+
+.brand{gap:0}.brand>.logo{font:inherit;letter-spacing:0;color:inherit}
+.logo{display:inline-flex;align-items:center;gap:10px;color:var(--gold);text-decoration:none}
+.logo .emblem{width:34px;height:34px;flex-shrink:0;filter:drop-shadow(0 0 6px #e9cf8e40)}
+.logo .emblem circle:nth-of-type(2){transform-box:fill-box;transform-origin:center;animation:emblemSpin 40s linear infinite}
+.logo-type{display:flex;flex-direction:column;line-height:1}
+.logo-type b{font:800 18px 'Noto Sans KR',sans-serif;letter-spacing:.24em;color:#f3f0e8}
+.logo-type small{display:flex;align-items:center;font:700 9px 'Rajdhani',sans-serif;letter-spacing:.42em;color:var(--gold);margin-top:5px}
+.logo-type small i{display:inline-block;width:14px;height:1px;background:currentColor;margin:0 7px 0 3px;opacity:.7}
+.title-hero{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px 0 20px;margin-bottom:16px;border-bottom:1px solid var(--line);text-align:center;position:relative}
+.title-hero:after{content:'';position:absolute;bottom:-1px;left:50%;width:120px;height:2px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.logo-lg{flex-direction:column;gap:14px}
+.logo-lg .emblem{width:88px;height:88px;filter:drop-shadow(0 0 16px #e9cf8e55)}
+.logo-lg .logo-type{align-items:center}
+.logo-lg .logo-type b{font-size:34px;letter-spacing:.32em;margin-right:-.32em}
+.logo-lg .logo-type small{font-size:12px;margin-top:9px}
+.title-tag{margin:0;font:700 11px 'Rajdhani',sans-serif;letter-spacing:.32em;color:#9d906f}
+@keyframes emblemSpin{to{transform:rotate(360deg)}}
+@media(max-width:700px){
+ nav button span{display:none}nav button{padding:7px}
+ .logo .emblem{width:28px;height:28px}.logo-type b{font-size:15px;letter-spacing:.16em}.logo-type small{font-size:7px;letter-spacing:.3em}
+ .logo-lg .emblem{width:64px;height:64px}.logo-lg .logo-type b{font-size:26px}
+}
+
+/* ══ 휴대폰: 가로 전용 ════════════════════════════════════════════
+   세로로 들면 회전 안내만 보이고, 가로(높이 540px 이하)에서는 전장 가운데 · 상점 오른쪽 세로 열 배치. */
+#rotate{display:none}
+.touch-only{display:none!important}
+@media(pointer:coarse){.touch-only{display:inline-flex!important}}
+@media(orientation:portrait) and (max-width:760px) and (pointer:coarse){
+ #rotate{display:grid;place-items:center;position:fixed;inset:0;z-index:2147483647;background:radial-gradient(ellipse at 50% 40%,#22262f,#08090c 70%);color:var(--text);text-align:center;padding:24px}
+ #rotate>div{display:flex;flex-direction:column;align-items:center;gap:10px}
+ #rotate b{font-size:17px;letter-spacing:.04em}#rotate small{font-size:12px;color:var(--muted)}
+ .rotate-phone{width:46px;height:78px;border:2px solid var(--gold);border-radius:8px;position:relative;margin-bottom:14px;animation:rotatePhone 2.4s ease-in-out infinite}
+ .rotate-phone:after{content:'';position:absolute;left:50%;bottom:5px;width:10px;height:2px;border-radius:2px;background:var(--gold);transform:translateX(-50%)}
+ body>header,body>main,dialog,dialog::backdrop,#toast{display:none!important}
+}
+@keyframes rotatePhone{0%,25%{transform:rotate(0)}55%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+
+@media(orientation:landscape) and (max-height:540px){
+ body{min-width:0;padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+ header{height:36px;padding:0 10px}
+ header:after{left:10px;width:80px}
+ .logo .emblem{width:24px;height:24px}.logo-type b{font-size:13px;letter-spacing:.14em}.logo-type small{display:none}
+ nav{gap:4px}nav button{padding:4px 8px;font-size:10px}nav button span{display:none}nav button .ico{width:15px;height:15px}
+ main{padding:0 8px}
+ .heading{height:30px;gap:10px;display:flex;padding:0}.mission{display:none}
+ #route{justify-content:flex-start;gap:5px;flex:1}.route-node{width:17px;height:17px;font-size:9px}.route-node .ico{width:10px;height:10px}
+ .resources{gap:14px;display:flex}.resources>div{display:flex;align-items:center;gap:5px;min-width:0}.resources small{font-size:8px;letter-spacing:.1em}.resources strong{font-size:15px}
+ #life .ico,#gold .ico{width:13px;height:13px}
+ body.multi .heading{height:30px;min-height:0}.pchip{padding:2px 6px;min-width:0}
+ .layout{grid-template-columns:150px minmax(0,1fr);gap:8px;height:calc(100dvh - 70px);min-height:0}
+ .records{display:none}
+ .synergies{padding:8px 8px 10px}
+ .section-title{font-size:11px;padding-bottom:6px;margin-bottom:4px}.section-title>span{display:none}
+ #traits{display:block}
+ .trait{padding:4px 0;gap:7px}.trait small{display:none}.trait b{font-size:11px}.trait-icon,.trait:not(.active) .trait-icon{width:22px;height:22px}.trait-icon .ico{width:13px;height:13px}
+ .trait-count i{width:5px;height:5px}.trait-count em{font-size:11px}
+ .trait-off{padding:6px 0 2px}.trait-off small{font-size:9px}.trait-off span{font-size:9px;padding:2px 4px}
+ .roster-title{margin-top:8px}#detail p{font-size:10px}.detail-hero .portrait{width:36px;height:36px}.detail-hero b{font-size:12px}.skill-name{font-size:11px;margin-top:6px}
+ .chain-head,.chain-list div{font-size:9px}.chain-list div b{font-size:10px}
+ #sell,#unequip{font-size:10px;padding:6px}
+ /* center: arena column + vertical shop column */
+ .center{grid-template-columns:minmax(0,1fr) 164px;grid-template-rows:30px minmax(0,1fr) 15px 40px 24px;column-gap:8px;
+  grid-template-areas:"head shophead" "arena shop" "bhead shop" "bench shop" "echo shop"}
+ .arena-head{grid-area:head;padding:0 2px}.arena{grid-area:arena}.bench-heading{grid-area:bhead;padding:0}#bench{grid-area:bench}.echo-tray{grid-area:echo}
+ .shop-heading{grid-area:shophead;gap:4px}#shop{grid-area:shop}
+ .arena-head h2{font-size:11px;margin:1px 0 0}.live{font-size:8px}
+ .controls{gap:4px}.controls button{font-size:10px;padding:5px 8px}#fight .ico{width:12px;height:12px}
+ .arena{padding:4px 2%;grid-template-rows:12px minmax(0,1fr) 18px minmax(0,1fr) 14px}
+ .board-label,.board-foot{font-size:7px}.board-label b{font-size:9px}.board-foot b{display:none}.board-foot #capacity{font-size:10px}
+ .divider{font-size:9px}
+ .grid{gap:3px 6px}.grid .tile{max-height:none}.unit-name{font-size:8px}.stars{font-size:7px}
+ #resonance{width:112px;height:28px;bottom:5px;right:8px;padding:3px 12px}#resonance>span,#resonance b{font-size:9px}
+ .bench-heading b{font-size:9px}.bench-heading small{display:none}
+ .bench{padding:3px 5px;gap:4px}
+ .echo-tray>span{font-size:10px}.echo-tray>small{display:none}.echo-tray button,.echo-tray .muted{font-size:9px}
+ .shop-heading>div:first-child,.shop-hint{display:none}
+ .shop-heading>div{gap:4px;width:100%}
+ .shop-heading button{flex:1;font-size:10px;padding:5px 4px}.shop-heading button span{display:none}
+ #shop{display:flex;flex-direction:column;gap:4px;padding:4px;overflow-y:auto;scroll-snap-type:none}
+ .shop-card{flex:1 1 0;min-height:42px;height:auto;min-width:0}
+ .shop-card .portrait{top:0;bottom:0;left:0;right:auto;width:48px;aspect-ratio:auto}
+ .shop-card:after{background:linear-gradient(90deg,transparent 0,#0b0c10e6 48px,#0b0c10f2)}
+ .card-copy{left:54px;right:4px;bottom:auto;top:50%;transform:translateY(-50%)}
+ .card-copy strong{font-size:12px;margin:1px 0 0}.card-copy small{font-size:8px}.card-copy>span{display:none}
+ .cost{font-size:10px;top:2px;right:2px;padding:0 4px 0 6px}
+ .owned{display:none}.chain-pill{top:auto;bottom:2px;right:2px;font-size:7px;padding:1px 3px}
+ .short{top:auto;bottom:0;font-size:9px;padding:1px 0}
+ .sold{font-size:10px}
+ /* dialogs */
+ dialog{max-height:94dvh;padding:16px 18px;width:min(760px,94vw)}
+ dialog h2{font-size:18px;margin:6px 0}dialog>div>p{font-size:11px;line-height:1.6}
+ .title-hero{padding:0 0 10px;margin-bottom:8px;gap:6px}.logo-lg{flex-direction:row;gap:12px}.logo-lg .emblem{width:46px;height:46px}.logo-lg .logo-type{align-items:flex-start}.logo-lg .logo-type b{font-size:22px}.logo-lg .logo-type small{font-size:9px;margin-top:5px}.title-tag{font-size:9px}
+ .mode-grid{grid-template-columns:1fr 1fr;gap:10px}.mode-grid button{min-height:0;padding:12px 14px}.mode-icon .ico{width:24px;height:24px}
+ .starter-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}.starter-grid button{height:150px}.starter-grid .portrait{height:92px;width:100%}
+ .starter-grid button>div:last-child{left:8px;right:8px;bottom:8px}.starter-grid small{font-size:8px}.starter-grid h3{font-size:12px;margin:2px 0}.starter-grid p{display:none}.starter-grid b{font-size:9px}
+ .augment-choices{grid-template-columns:repeat(3,minmax(0,1fr))}.augment-choices button{padding:10px}.augment-choices p{font-size:10px}
+ .result-stat{margin:8px 0}.damage-chart{font-size:10px}.wide{margin-top:10px;padding:8px}
+ #toast{bottom:10px;padding:8px 14px;font-size:11px}
+ #cutin{height:70px}.cutin-portrait{width:70px;height:70px}
+}
+@media(orientation:landscape) and (max-height:540px){
+ footer{display:none}
+ .layout{height:calc(100dvh - 72px)}
+ #resonance{display:flex;align-items:center;justify-content:space-between;gap:6px}#resonance b{display:inline}
+}
+@media(orientation:landscape) and (max-height:540px){
+ .layout{display:grid;flex-direction:initial}
+ .synergies{order:0;width:auto;overflow:auto}
+ .center{order:0;width:auto}
+ .records{display:none!important}
+ .heading{display:flex;grid-template-columns:none;min-height:0}
+ .arena{border-radius:3px}
+ .board-foot{padding-right:118px}
+}

@@ -1,0 +1,11 @@
+{
+  "name": "명조 · 공명전선",
+  "short_name": "공명전선",
+  "description": "명조 공명자 25명으로 조합을 짜는 비공식 팬 오토배틀러",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0d11",
+  "theme_color": "#0b0d11",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}

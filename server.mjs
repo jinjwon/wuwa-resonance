@@ -9,7 +9,7 @@ import {Room} from './multi.mjs';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT)||4190;
 const HOST=process.env.HOST||'0.0.0.0';
-const TYPES={html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8',mjs:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',svg:'image/svg+xml',json:'application/json'};
+const TYPES={html:'text/html; charset=utf-8',js:'text/javascript; charset=utf-8',mjs:'text/javascript; charset=utf-8',css:'text/css; charset=utf-8',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',svg:'image/svg+xml',json:'application/json',webmanifest:'application/manifest+json'};
 const rooms=new Map();
 
 function lanUrls(){const out=[];for(const list of Object.values(os.networkInterfaces()))for(const n of list||[])if(n.family==='IPv4'&&!n.internal)out.push(`http://${n.address}:${PORT}/`);return out;}

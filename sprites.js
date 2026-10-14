@@ -1,80 +1,193 @@
-// Pixel battle layer: every fighter becomes a procedurally drawn 18×24 chibi that stands on its tile,
+// Pixel battle layer: every fighter becomes a hand-made 24×32 chibi that stands on its tile,
 // marches to the front line, lunges or shoots at its target, and falls when defeated.
-// Sprites are drawn once per resonator into a canvas (no image files) and animated with the Web Animations API.
-const W=18,H=24,SKIN='#f7dcc9',BLUSH='#f0a7a0',EYE='#1c2236',LEG='#2b2836',BOOT='#16141d',LINE='#0a0e18';
+// Each resonator is assembled from pixel-art parts (body · back hair · front hair · signature items · weapon)
+// drawn as text grids below, so there are no image files. Animated with the Web Animations API.
+const W=24,H=32,LINE='#0d0f18';
+
+// ── pixel codes ──────────────────────────────────────────────────────
+// s S skin · k line · w eye light · e eye · r blush · u mouth · c C cloth · d D cloth2 · t T trim
+// p P pants · b B boots · h H g hair · o O gold · y Y white · x X glow · m M metal · n wood
+// z Z horn/black · i I pink · l leaf · f F red · v V blue · a A top (defaults to cloth) · '.' empty
+const HEAD=[
+ '........................','........................','........................','........................',
+ '........................','........................',
+ '.......ssssssssss.......',
+ '......ssssssssssss......',
+ '......ssssssssssss......',
+ '......ssssssssssss......',
+ '......sskksssskkss......',
+ '......sswesssswess......',
+ '......sreesssseers......',
+ '......sssssuusssss......',
+ '.......ssssssssss.......',
+ '..........SSSS..........'
+];
+const ARMS=['.......aaattttaaa.......','.....AAaaaattaaaaAA.....','.....AAaaaattaaaaAA.....','.....AAaaaattaaaaAA.....','.....AAddddddddddAA.....','.....ssaaaaaaaaaass.....'];
+const BODY={
+ short:[...HEAD,...ARMS,
+  '.....cccccccccccccc.....','....cccccccccccccccc....','....CCCCCCCCCCCCCCCC....',
+  '.........ss..ss.........','.........ss..ss.........','.........bb..bb.........','.........bb..bb.........',
+  '........bbb..bbb........','........BBB..BBB........','........................'],
+ dress:[...HEAD,...ARMS,
+  '.....cccccccccccccc.....','....cccccccccccccccc....','....cccccccccccccccc....','...cccccccccccccccccc...',
+  '...cccccccccccccccccc...','..CCCCCCCCCCCCCCCCCCCC..','..tttttttttttttttttttt..',
+  '........bbb..bbb........','........BBB..BBB........','........................'],
+ coat:[...HEAD,
+  '.......cccddddccc.......','.....CCcccddddcccCC.....','.....CCcccddddcccCC.....','.....CCcccddddcccCC.....',
+  '.....CCcccttttcccCC.....','.....sscccppppcccss.....',
+  '......cccppppppccc......','......cccppppppccc......','......CCCppppppCCC......',
+  '.....CCC.pp..pp.CCC.....','.....CC..pp..pp..CC.....','.........pp..pp.........','.........PP..PP.........',
+  '........bbb..bbb........','........BBB..BBB........','........................'],
+ suit:[...HEAD,
+  '.......ccddttddcc.......','.....CCcccdttdcccCC.....','.....CCcccdttdcccCC.....','.....CCccccttccccCC.....',
+  '.....CCccccccccccCC.....','.....ssppppppppppss.....',
+  '......pppppppppppp......','......pppppppppppp......','.......pppp..pppp.......',
+  '........ppp..ppp........','........ppp..ppp........','........ppp..ppp........','........PPP..PPP........',
+  '........bbb..bbb........','........BBB..BBB........','........................']
+};
+const TOP=['........................','........................','.........hhhhhh.........','.......hhhhhhhhhh.......','......hhhhgghhhhhh......','.....hhhghhhhhhhhhh.....'];
+const LOCKS=['....hh............hh....','....hh............hh....','....Hh............hH....','....HH............HH....','....HH............HH....','.....H............H.....'];
+const FRONT={
+ full:[...TOP,'....hhhhhhhhhhhhhhhh....','....hhhhhhhhhhhhhhhh....','....hhhhhhhhhhhhhhhh....','....hhh.hhh..hhh.hhh....','....hh............hh....',...LOCKS],
+ side:[...TOP,'....hhhhhhhhhhhhhhhh....','....hhhhhhhhhhhhhhhh....','....hhhhhhhhhhhhhhhh....','....hhhhhhhh.hhh.hhh....','....hhhh..........hh....','....hhh...........hh....',...LOCKS.slice(1)],
+ parted:[...TOP,'....hhhhhhhhhhhhhhhh....','....hhhhhhh..hhhhhhh....','....hhhhhh....hhhhhh....','....hhhhh......hhhhh....','....hhh..........hhh....',...LOCKS],
+ bob:[...TOP,'....hhhhhhhhhhhhhhhh....','....hhhhhhhhhhhhhhhh....','....hhhhhhhhhhhhhhhh....','....hhh.hhh..hhh.hhh....','....hh............hh....','....hh............hh....','....hh............hh....','....HH............HH....','.....H............H.....'],
+ male:[...TOP,'.....hhhhhhhhhhhhhh.....','.....hhhhhhhhhhhhhh.....','.....hhhhhhhhhhhhhh.....','.....hh.hhh.hhh.hhh.....','.....h............h.....','.....H............H.....'],
+ spiky:['........................','.......h...h..h...h.....','......hh..hhhhh..hh.....','.....hhhhhhhhhhhhhh.....','....hhhhhgghhhhhhhhh....','...hhhhhhgghhhhhhhhhh...',
+  '....hhhhhhhhhhhhhhhh....','...hhhhhhhhhhhhhhhhhh...','....hhhhhhhhhhhhhhhh....','....hhh.hh.hh.hh.hhh....','....hh............hh....','....h..............h....','....h..............h....']
+};
+// Back hair is drawn behind the body as simple shapes.
+const BACK={
+ long:put=>{for(let y=5;y<=21;y++)for(let x=3;x<=20;x++)put(x,y,x===3||x===20||y>=20?'H':'h');for(let x=3;x<=20;x+=2)put(x,22,'H');},
+ wave:put=>{BACK.long(put);for(let y=8;y<=22;y++){if(y%4<2){put(2,y,'H');put(21,y,'H');}}},
+ bob:put=>{for(let y=4;y<=15;y++)for(let x=4;x<=19;x++)put(x,y,y>=14?'H':'h');for(let x=4;x<=19;x+=2)put(x,16,'H');},
+ short:put=>{for(let y=3;y<=11;y++)for(let x=5;x<=18;x++)put(x,y,'h');},
+ twin:put=>{BACK.short(put);for(const [a,b] of [[1,4],[19,22]])for(let y=6;y<=22;y++)for(let x=a;x<=b;x++){const edge=x===a||x===b;if(y<9&&(a===1?x<3:x>20))continue;if(y>20&&(a===1?x===1||x===4:x===19||x===22))continue;put(x,y,edge?'H':'h');}},
+ drill:put=>{BACK.short(put);for(const [a,b] of [[1,4],[19,22]])for(let y=9;y<=23;y++)for(let x=a;x<=b;x++){if(y===23&&(x===a||x===b))continue;put(x,y,y%3===0?'H':x===a||x===b?'H':'h');}},
+ pony:put=>{BACK.short(put);for(let y=1;y<=4;y++)for(let x=16;x<=20;x++)put(x,y,'h');for(let y=5;y<=19;y++)for(let x=19;x<=22;x++){if(y>16&&x===19)continue;put(x,y,x===22?'H':'h');}},
+ lowtail:put=>{BACK.short(put);for(let y=11;y<=23;y++)for(let x=17;x<=20;x++){if(y>20&&(x===17||x===20))continue;put(x,y,x===20?'H':'h');}},
+ braid:put=>{BACK.short(put);for(let y=12;y<=27;y++)for(let x=18;x<=20;x++)put(x,y,(Math.floor(y/2)+x)%2?'h':'H');put(19,28,'t');}
+};
+const ITEM={
+ tiara:['o.o','.oo','..O'],
+ horns:['zZ..','zzZ.','.zz.','..z.'],
+ crown:['.o..o..o..o.','.o..oo.oo.o.','oooooooooooo','OtOOOtOOOtOO'],
+ thorns:['t...t..t...t','.t.tttttt.t.','..tttttttt..'],
+ elfear:['S...','sss.'],
+ hat:['........yyyyyyyy........','......yyyyyyyyyyyy......','......yyyyyyyyyyyy......','......dddddddddddd......','..yyyyyyyyyyyyyyyyyyyy..','.YYYYYYYYYYYYYYYYYYYYYY.'],
+ bow:['tt.tt','tTtTt','tt.tt'],
+ darkbow:['dd.dd','dDdDd','dd.dd'],
+ flower:['.f.','fof','.f.'],
+ feather:['..t','.tT','tT.','T..'],
+ ears:['h..','hh.','hih'],
+ butterfly:['x.x','XxX','x.x'],
+ laurel:['.o.','oo.','.oo','oo.'],
+ glasses:['.kkkk..kkkk.','.k..kkkk..k.'],
+ headpiece:['.dddd..dddd.','ddyyd..dyydd','.dddddddddd.'],
+ flowers:['.i...i...i.','iyi.iyi.iyi'],
+ sheep:['.yyy.','yyzyy','yzzzy','.y.y.'],
+ jelly:['.xxx.','xXXXx','x.x.x','.x.x.'],
+ puppet:['.zz.','zxxz','.zz.','.z.z'],
+ gaunt:['ttt','tTt'],
+ sword:['.m.','.mM','.mM','.mM','.mM','.mM','.mM','.mM','ttt','.n.','.n.'],
+ broad:['mmM','mmM','mmM','mmM','mmM','mmM','mmM','mmM','.M.','ttt','.n.','.n.'],
+ spear:['.m.','mmm','.m.','.t.','tnt',...Array(19).fill('.n.')],
+ gun:['zzzzzM','zzt...','z.....'],
+ staff:['.x.','xXx','.x.',...Array(18).fill('.n.')],
+ cross:['.o.','ooo','.o.',...Array(18).fill('.n.')],
+ flowerstaff:['.i.','iyi','.l.',...Array(18).fill('.n.')],
+ brush:['.z.','zzz','zzz','.t.',...Array(12).fill('.n.')],
+ orb:['.x.','xXx','.x.'],
+ spark:['X'],
+ moon:['.oo.','o...','o...','.oo.'],
+ lyre:['o.y.o','oyyyo','oyyyo','.ooo.'],
+ veil:['........yyyyyyyy........','......yyyyyyyyyyyy......','.....yyyyyyyyyyyyyy.....','....yyyYyyyyyyyyyyyy....',...Array(11).fill('...yyy............yyy...'),'...YYY............YYY...','...YY..............YY...'],
+ bigbow:['ff.ff','fFfFf','ff.ff','.f.f.'],
+ pinkbow:['ii.ii','iIiIi','ii.ii'],
+ hornsGold:['MM..','MoM.','.MM.','..M.'],
+ band:['....zzzzzzzzzzzzzzzz....'],
+ redband:['....zzzzzzzfzzzzzzzz....'],
+ xclip:['v.v','.v.','v.v'],
+ lily:['.y.y.','yyoyy','.yly.','..l..'],
+ bun:['.hhh.','hhhhh','.yyy.'],
+ halo:['....oooooooooo....','..oo..........oo..','.o..............o.','o................o','o................o'],
+ ribbon:['fF','.f'],
+ blueribbon:['vV','.v','.v'],
+ mark:['f'],
+ tassel:['f','f','F'],
+ blacktassel:['z','z','k'],
+ ornament:['.z.','zoz','.z.'],
+ glove:['zz','zo'],
+ gauntBig:['ZMMZ','MmmM','MxxM','MxxM','ZMMZ'],
+ shoulder:['MMM','mMM'],
+ collar:['zzzz'],
+ earsDark:['.zz.','zooz','zooz'],
+ bud:['y']
+};
+const pair=(name,x,y,rx)=>[[name,x,y],[name,rx,y,1]];
+// [item, x, y, mirror?] — weapons live in the same list; `weapon` decides melee vs ranged motion.
 export const LOOK={
- jinhsi:{hair:'#eef0f6',cloth:'#f3efe2',trim:'#d9b45a',style:'long',acc:'crown',weapon:'sword'},
- changli:{hair:'#d4503f',cloth:'#2a2230',trim:'#f06a4f',style:'long',acc:null,weapon:'sword'},
- shorekeeper:{hair:'#a6cbf4',cloth:'#2d3d6b',trim:'#d6ebff',style:'long',acc:'halo',weapon:'staff'},
- camellya:{hair:'#f0eef2',cloth:'#1d1519',trim:'#d12a44',style:'short',acc:'bow',weapon:'sword'},
- carlotta:{hair:'#ddd5ee',cloth:'#f3eef8',trim:'#7a4ab0',style:'twin',acc:'bow',weapon:'gun'},
- cartethyia:{hair:'#f2dc92',cloth:'#eef3f8',trim:'#5866d8',style:'long',acc:'crown',weapon:'sword'},
- phrolova:{hair:'#5b3a8c',cloth:'#1d1426',trim:'#c63a60',style:'long',acc:'halo',weapon:'staff'},
- jiyan:{hair:'#3aa59a',cloth:'#1d2a2e',trim:'#7fe0c8',style:'pony',acc:null,weapon:'spear'},
- yinlin:{hair:'#cf3440',cloth:'#2a1a26',trim:'#b061f7',style:'long',acc:null,weapon:'orb'},
- zhezhi:{hair:'#262b3a',cloth:'#e7f1f2',trim:'#3fa3a0',style:'long',acc:'glasses',weapon:'staff'},
- verina:{hair:'#e8d872',cloth:'#eaf4d2',trim:'#7cbf4a',style:'twin',acc:'halo',weapon:'staff'},
- rover:{hair:'#1d1d25',cloth:'#2c2b35',trim:'#d6b685',style:'short',acc:null,weapon:'sword'},
- encore:{hair:'#f6b6a2',cloth:'#e64d52',trim:'#ffe0a6',style:'twin',acc:'ears',weapon:'gun'},
- mortefi:{hair:'#2f2a3b',cloth:'#3a2d2a',trim:'#e07a52',style:'short',acc:'glasses',weapon:'gun'},
- xiangliyao:{hair:'#40465c',cloth:'#2c3348',trim:'#8cc4ff',style:'pony',acc:null,weapon:'fist'},
- sanhua:{hair:'#ebf2f6',cloth:'#2a3f66',trim:'#a4e5f2',style:'short',acc:'bow',weapon:'sword'},
- phoebe:{hair:'#f3d77a',cloth:'#f4f2ea',trim:'#3a3f9e',style:'long',acc:'hat',weapon:'staff'},
- lupa:{hair:'#d8304a',cloth:'#f0ece6',trim:'#b32035',style:'long',acc:'horns',weapon:'sword'},
- cantarella:{hair:'#c4a6ef',cloth:'#3b2a6e',trim:'#e9e1ff',style:'long',acc:'bow',weapon:'orb'},
- lingyang:{hair:'#eef1f5',cloth:'#f4f4f4',trim:'#1d1d1d',style:'spiky',acc:'ears',weapon:'fist'},
- calcharo:{hair:'#d8d8e6',cloth:'#1d1a2a',trim:'#9a7bff',style:'long',acc:null,weapon:'sword'},
- augusta:{hair:'#dc4a2a',cloth:'#f0ece2',trim:'#e3b53c',style:'long',acc:'crown',weapon:'spear'},
- iuno:{hair:'#34409a',cloth:'#eef0fb',trim:'#d4b058',style:'long',acc:'crown',weapon:'orb'},
- ciaccona:{hair:'#cf2f5a',cloth:'#2f6b5a',trim:'#f0e6d0',style:'long',acc:'horns',weapon:'staff'},
- zani:{hair:'#eeeef2',cloth:'#f2f0ec',trim:'#c8282e',style:'long',acc:'horns',weapon:'fist'}
+ jinhsi:{body:'dress',front:'full',back:'long',weapon:'sword',pal:{h:'#eef0f6',a:'#1e1c24',c:'#f2efe6',d:'#d9b45a',t:'#d9b45a',e:'#e0b04a',b:'#e9e4d4'},items:[...pair('tiara',4,3,17),['blueribbon',4,6],['collar',10,15],['sword',18,11]]},
+ changli:{body:'dress',front:'side',back:'long',weapon:'sword',pal:{h:'#e8706a',g:'#f8c8b8',a:'#26212c',c:'#b8323a',d:'#26212c',t:'#e9c45a',e:'#e8b040',b:'#26212c'},items:[['feather',16,2],['tiara',17,3,1],['sword',18,11]]},
+ shorekeeper:{body:'dress',front:'full',back:'long',weapon:'orb',pal:{h:'#9cc6f2',a:'#eef4fb',c:'#e2ecf8',d:'#a8c8ee',t:'#7ab8f0',e:'#6aa8f0',b:'#c8daf0',x:'#5ab8ff'},items:[['veil',0,1],['butterfly',16,2],['butterfly',20,11],['orb',19,15],['spark',21,13]]},
+ camellya:{body:'short',front:'full',back:'bob',weapon:'sword',pal:{h:'#f0eef2',g:'#2b2229',H:'#3a2c34',c:'#1b1418',d:'#c3243c',t:'#d82e46',e:'#d23a4a',b:'#1b1418'},items:[['flower',15,4],['flower',5,7],['sword',18,11]]},
+ carlotta:{body:'dress',front:'parted',back:'wave',weapon:'gun',pal:{h:'#e2dcec',a:'#a8203a',c:'#f3eef2',d:'#2a2228',t:'#2a2228',e:'#9a6ad8',b:'#2a2228'},items:[['bigbow',2,2],['glove',17,21],['gun',17,20]]},
+ cartethyia:{body:'dress',front:'full',back:'long',weapon:'sword',pal:{h:'#f2dc92',a:'#eef3f8',c:'#eef3f8',d:'#3c4bb0',t:'#4b5ad8',e:'#6aa8e8',b:'#e8ecf4'},items:[['elfear',1,10],['elfear',19,10,1],['thorns',6,2],['collar',10,15],['sword',18,11]]},
+ phrolova:{body:'dress',front:'side',back:'long',weapon:'orb',pal:{h:'#4a2f78',a:'#1a1222',c:'#1a1222',d:'#b8304c',t:'#f2ece4',e:'#c8406a',b:'#1a1222',x:'#ff5a7a'},items:[['halo',3,0,0,1],['ribbon',16,4],['ribbon',5,5,1],['orb',19,15],['spark',21,13]]},
+ jiyan:{male:true,body:'coat',front:'male',back:'pony',weapon:'spear',pal:{h:'#2f9a8e',c:'#1c2a2a',d:'#2a8f86',t:'#c9a24a',e:'#e0b04a',p:'#1c2422',b:'#141a1a'},items:[['spear',18,3]]},
+ yinlin:{body:'short',front:'side',back:'long',weapon:'orb',pal:{h:'#d42a38',a:'#2a1a2e',c:'#2a1a2e',d:'#c9a24a',t:'#b56cf5',e:'#b47aff',b:'#1a1020',x:'#c47aff'},items:[['redband',0,6],['puppet',19,10]]},
+ zhezhi:{body:'dress',front:'full',back:'long',weapon:'staff',pal:{h:'#1c2030',g:'#2f8f8a',a:'#e7f1f2',c:'#e7f1f2',d:'#2f7c7a',t:'#3fa3a0',e:'#6a8a9a',b:'#e7f1f2'},items:[['bun',15,0],['glasses',6,10],['brush',18,8]]},
+ verina:{body:'short',front:'full',back:'twin',weapon:'staff',pal:{h:'#e2e6a0',a:'#f3f6e6',c:'#f3f6e6',d:'#7cbf4a',t:'#7cbf4a',e:'#6ab84a',b:'#f3f6e6'},items:[['flowers',6,3],['lily',9,0],['flowerstaff',18,6]]},
+ rover:{male:true,body:'coat',front:'male',back:'short',weapon:'sword',pal:{h:'#1c1c24',g:'#3a3a48',c:'#1e1d26',d:'#2a2933',t:'#d6b685',e:'#e0c080',p:'#1d1c24',b:'#121117'},items:[['sword',18,11]]},
+ encore:{body:'short',front:'full',back:'twin',weapon:'gun',pal:{h:'#f5a0b8',a:'#2a2228',c:'#f2ece4',d:'#2a2228',t:'#f07aa0',e:'#9a6ad8',b:'#2a2228'},items:[['pinkbow',15,1],['sheep',0,19],['gun',17,20]]},
+ mortefi:{male:true,body:'coat',front:'male',back:'short',weapon:'gun',pal:{h:'#c8282e',g:'#e85a50',c:'#eeeae4',d:'#1e1c22',t:'#c8282e',e:'#e0b04a',p:'#1e1c22',b:'#16141a'},items:[['glasses',6,10],['glove',17,21],['gun',17,20],['gun',1,20,1]]},
+ xiangliyao:{male:true,body:'coat',front:'male',back:'short',weapon:'fist',pal:{h:'#a9a6ad',g:'#d0ced4',c:'#e8e8ee',d:'#1c2a5a',t:'#5a8cff',e:'#8a8af0',p:'#1c1c26',b:'#1c1c26',x:'#5ab0ff'},items:[['gauntBig',16,18],['spark',21,17]]},
+ sanhua:{body:'dress',front:'parted',back:'long',weapon:'sword',pal:{h:'#e8ecf2',a:'#1a1a20',c:'#1a1a20',d:'#2a2a34',t:'#d9b45a',e:'#d23a4a',b:'#1a1a20'},items:[['ornament',15,3],['blacktassel',17,6],['mark',11,8],['sword',18,11]]},
+ phoebe:{body:'dress',front:'full',back:'long',weapon:'staff',pal:{h:'#f3d77a',a:'#f6f3ea',c:'#f6f3ea',d:'#2e3488',t:'#3a3f9e',e:'#8a7af0',b:'#2e3488'},items:[['hat',0,0],['xclip',15,7],['collar',10,15],['cross',18,6]]},
+ lupa:{body:'short',front:'side',back:'long',weapon:'sword',pal:{h:'#d42c46',a:'#f2eee8',c:'#2a1f24',d:'#2a1f24',t:'#b32035',e:'#c8504a',b:'#2a1f24'},items:[...pair('hornsGold',3,0,17),['ribbon',16,5],['broad',18,10]]},
+ cantarella:{body:'dress',front:'side',back:'wave',weapon:'orb',pal:{h:'#c8acf2',a:'#ece6ff',c:'#2e2a6a',d:'#2e2a6a',t:'#8a7af0',e:'#a88af5',b:'#2e2a6a',x:'#b9a0ff'},items:[['headpiece',6,1],['jelly',19,8]]},
+ lingyang:{male:true,body:'coat',front:'spiky',back:'short',weapon:'fist',pal:{h:'#eef1f5',c:'#f4f4f4',d:'#1d1d1d',t:'#d23a3a',e:'#9aa8c0',p:'#1d1d1d',b:'#1d1d1d'},items:[...pair('earsDark',3,0,17),['band',0,6],['tassel',19,12],['gaunt',4,20],['gaunt',17,20]]},
+ calcharo:{male:true,body:'coat',front:'male',back:'long',weapon:'sword',pal:{h:'#d6d6e4',c:'#1a1824',d:'#3a3650',t:'#9a7bff',e:'#e0b04a',p:'#15131c',b:'#0e0c14'},items:[['shoulder',4,16],['broad',18,10]]},
+ augusta:{body:'dress',front:'side',back:'long',weapon:'spear',pal:{h:'#d8452a',a:'#f2eee4',c:'#f2eee4',d:'#2a2420',t:'#e3b53c',e:'#e8b040',b:'#2a2420'},items:[['crown',6,0],['spear',18,3]]},
+ iuno:{body:'dress',front:'full',back:'long',weapon:'orb',pal:{h:'#2f3a92',g:'#4553b8',a:'#f0f2fb',c:'#f0f2fb',d:'#2f3a92',t:'#d4b058',e:'#8aa8ff',b:'#f0f2fb'},items:[...pair('laurel',3,4,18),['moon',19,13]]},
+ ciaccona:{body:'short',front:'side',back:'braid',weapon:'staff',pal:{h:'#cc2c58',a:'#f2ece0',c:'#2f6b5a',d:'#2f6b5a',t:'#e9d6a0',e:'#4fd0a0',b:'#2a2420'},items:[...pair('horns',3,0,17),['bud',4,1],['bud',19,1],['elfear',1,10],['elfear',19,10,1],['lyre',17,17]]},
+ zani:{body:'suit',front:'side',back:'long',weapon:'fist',pal:{h:'#eeeef2',c:'#1e1c22',d:'#f2f0ec',t:'#c8282e',e:'#c0603a',p:'#1e1c22',b:'#151318'},items:[...pair('horns',3,0,17),['glove',5,21],['glove',17,21]]}
 };
 const MELEE=new Set(['sword','spear','fist']);
 function mix(hex,k){const n=parseInt(hex.slice(1),16),c=[n>>16,n>>8&255,n&255].map(v=>Math.round(k<0?v*(1+k):v+(255-v)*k));return '#'+c.map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');}
+function palette(P){
+ const h=P.h,c=P.c,d=P.d||c,t=P.t||'#e9cf8e',p=P.p||mix(c,-.4),b=P.b||'#2b2836',x=P.x||t;
+ const a=P.a||c;
+ return {a,A:mix(a,-.24),v:'#4a7ae0',V:'#2c4ea8',I:'#c85a80',s:'#f8dccb',S:'#e6b8a4',k:'#2a2033',w:'#ffffff',e:P.e||'#3a3550',r:P.male?'#f8dccb':'#f2a3a0',u:'#c46a72',
+  c,C:mix(c,-.24),d,D:mix(d,-.28),t,T:mix(t,-.3),p,P:mix(p,-.25),b,B:mix(b,-.4),
+  h,H:P.H||mix(h,-.26),g:P.g||mix(h,.3),o:'#e9c45a',O:'#a8822e',y:'#f6f3ea',Y:'#cfc9bb',x,X:mix(x,.55),
+  m:'#e3eaf3',M:'#9aa6b8',n:'#7a5a3a',z:'#2b2530',Z:'#6b5f72',i:'#f5a3c0',l:'#62c46e',f:'#d8344a',F:'#8a1a2a'};
+}
 const cache=new Map();
-export function spriteUrl(key){
- if(cache.has(key))return cache.get(key);
- const L=LOOK[key]||{hair:'#ccc',cloth:'#556',trim:'#fff',style:'short',acc:null,weapon:'sword'};
+// Builds the 24×32 pixel grid (array of rows of color strings or null). Exported for the sprite sheet tool.
+export function spriteGrid(key){
+ const L=LOOK[key];if(!L)return null;const pal=palette({...L.pal,male:L.male});
  const g=Array.from({length:H},()=>Array(W).fill(null));
- const p=(x,y,c)=>{if(x>=0&&y>=0&&x<W&&y<H)g[y][x]=c;},r=(x,y,w,h,c)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++)p(x+i,y+j,c);};
- const hair=L.hair,hair2=mix(hair,-.28),cloth2=mix(L.cloth,-.3);
- // back hair
- if(L.style==='long'){r(3,5,2,12,hair2);r(13,5,2,12,hair2);}
- if(L.style==='twin'){r(1,6,3,9,hair2);r(14,6,3,9,hair2);}
- if(L.style==='pony'){r(13,3,3,11,hair2);}
- // legs, body, arms
- r(6,19,2,3,LEG);r(10,19,2,3,LEG);r(6,22,2,1,BOOT);r(10,22,2,1,BOOT);
- r(4,17,10,2,cloth2);r(5,12,8,6,L.cloth);r(8,12,2,5,L.trim);r(6,12,6,1,L.trim);r(5,16,8,1,cloth2);
- r(4,12,1,4,cloth2);r(13,12,1,4,cloth2);p(4,16,SKIN);p(13,16,SKIN);p(8,11,mix(SKIN,-.12));p(9,11,mix(SKIN,-.12));
- // head
- r(5,5,8,6,SKIN);
- r(4,2,10,3,hair);r(5,1,8,1,hair);r(5,5,8,1,hair);p(5,6,hair);p(12,6,hair);p(7,6,hair2);p(10,6,hair2);
- r(4,5,1,5,hair);r(13,5,1,5,hair);
- if(L.style==='spiky'){p(4,1,hair);p(7,0,hair);p(10,0,hair);p(13,1,hair);p(3,3,hair);p(14,3,hair);}
- const eye=L.acc==='glasses'?9:8;r(6,eye,2,10-eye,EYE);r(10,eye,2,10-eye,EYE);p(6,eye,'#ffffff');p(10,eye,'#ffffff');p(5,10,BLUSH);p(12,10,BLUSH);
- // accessories
- if(L.acc==='glasses'){r(5,8,3,1,'#1a1a2a');r(10,8,3,1,'#1a1a2a');p(8,8,'#1a1a2a');p(9,8,'#1a1a2a');}
- if(L.acc==='crown'){r(6,1,6,1,L.trim);p(6,0,L.trim);p(9,0,L.trim);p(11,0,L.trim);}
- if(L.acc==='horns'){r(4,0,1,2,'#3a2f3d');p(3,0,'#3a2f3d');r(13,0,1,2,'#3a2f3d');p(14,0,'#3a2f3d');}
- if(L.acc==='ears'){r(4,0,2,2,hair);r(12,0,2,2,hair);p(5,1,BLUSH);p(12,1,BLUSH);}
- if(L.acc==='halo'){r(6,0,6,1,'#fff3b8');p(5,1,'#fff3b8');p(12,1,'#fff3b8');}
- if(L.acc==='bow'){r(11,1,3,2,L.trim);p(10,2,L.trim);p(14,1,mix(L.trim,-.3));}
- if(L.acc==='hat'){r(4,0,10,3,'#f5f2ea');r(4,2,10,1,L.trim);r(1,3,16,1,'#f5f2ea');}
- // weapon in the right hand
- const metal='#e1e9f4',wood='#7a5a3a';
- if(L.weapon==='sword'){r(15,4,1,11,metal);p(16,5,mix(metal,-.25));r(14,15,3,1,L.trim);r(15,16,1,2,wood);}
- if(L.weapon==='spear'){r(15,2,1,20,wood);r(14,0,3,2,metal);p(15,0,'#ffffff');r(14,9,3,1,L.trim);}
- if(L.weapon==='gun'){r(13,14,5,2,'#3b3f4a');p(17,14,mix(L.trim,.2));p(14,16,'#3b3f4a');}
- if(L.weapon==='staff'){r(15,4,1,18,wood);r(14,1,3,3,L.trim);p(15,2,'#ffffff');}
- if(L.weapon==='orb'){r(14,10,3,3,L.trim);p(15,11,'#ffffff');p(14,9,mix(L.trim,.4));}
- if(L.weapon==='fist'){r(3,15,2,2,L.trim);r(13,15,2,2,L.trim);}
+ const put=(x,y,code)=>{if(x>=0&&y>=0&&x<W&&y<H&&pal[code])g[y][x]=pal[code];};
+ const stamp=(rows,ox=0,oy=0,flip=false)=>rows.forEach((row,j)=>{const r=flip?[...row].reverse():[...row];r.forEach((ch,i)=>{if(ch!=='.')put(ox+i,oy+j,ch);});});
+ BACK[L.back]?.(put);
+ for(const [name,x,y,flip,back] of L.items)if(back)stamp(ITEM[name],x,y,!!flip);
+ stamp(BODY[L.body]);
+ stamp(FRONT[L.front]);
+ for(const [name,x,y,flip,back] of L.items)if(!back)stamp(ITEM[name],x,y,!!flip);
  // 1px dark outline around the silhouette
  const out=g.map(row=>row.slice());
  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!g[y][x]&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>g[y+dy]?.[x+dx]))out[y][x]=LINE;
+ return out;
+}
+export function spriteUrl(key){
+ if(cache.has(key))return cache.get(key);
+ const grid=spriteGrid(key)||spriteGrid('rover');
  const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(out[y][x]){ctx.fillStyle=out[y][x];ctx.fillRect(x,y,1,1);}
+ grid.forEach((row,y)=>row.forEach((col,x)=>{if(col){ctx.fillStyle=col;ctx.fillRect(x,y,1,1);}}));
  const url=c.toDataURL();cache.set(key,url);return url;
 }
+export const SPRITE_SIZE={W,H};
 
 export class SpriteStage{
  constructor(arena,heroes){
@@ -102,9 +215,9 @@ export class SpriteStage{
  }
  layout(){
   for(const [uid,u] of this.units){const pos=this.home(uid);if(!pos)continue;
-   const k=Math.max(2,Math.min(5,Math.floor(pos.w*.72/W)));u.k=k;
-   u.x=pos.x;u.y=pos.y+(u.side==='ally'?-1:1)*pos.h*.16*u.adv;
-   Object.assign(u.el.style,{left:`${u.x}px`,top:`${u.y}px`});u.body.style.width=`${W*k}px`;u.body.style.height=`${H*k}px`;}
+   const k=Math.max(2,Math.min(5,Math.floor(pos.w*.8/W)));u.k=k;
+   u.x=pos.x;u.y=Math.max(k*H+14,pos.y+(u.side==='ally'?-pos.h*.16:pos.h*.5)*u.adv);
+   Object.assign(u.el.style,{left:`${u.x}px`,top:`${u.y}px`,zIndex:u.dead?0:Math.round(u.y)});u.body.style.width=`${W*k}px`;u.body.style.height=`${H*k}px`;}
  }
  anim(el,frames,ms,opts={}){if(!el)return;el._a?.cancel();el._a=el.animate(frames,{duration:ms/this.speed,easing:'ease-out',...opts});return el._a;}
  sync(states){for(const s of states){const u=this.units.get(s.uid);if(!u)continue;u.hp.style.width=`${Math.max(0,s.hp/u.max*100)}%`;if(s.hp<=0&&!u.dead)this.fall(u);}}
