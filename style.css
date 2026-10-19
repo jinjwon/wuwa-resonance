@@ -525,8 +525,8 @@ nav button .ico{width:15px;height:15px}
 #title{position:fixed;inset:0;z-index:60;display:grid;place-items:center;overflow:auto;padding:24px 16px;
  background:radial-gradient(ellipse at 50% 30%,#2a2f3b 0%,#12151b 55%,#08090c 100%)}
 #title[hidden]{display:none}
-.title-faces{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,1fr);opacity:.16;filter:saturate(.6) blur(1px);pointer-events:none;mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
-.title-faces .portrait{position:relative;inset:auto;width:100%;height:100%;border:0;border-radius:0}
+.title-faces{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-content:center;gap:12px;max-width:1400px;margin:auto;opacity:.16;filter:saturate(.6) blur(1px);pointer-events:none;mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+.title-faces .portrait{position:relative;inset:auto;width:100%;height:auto;aspect-ratio:4/3;max-height:280px;border:0;border-radius:0}
 .title-inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;width:min(520px,100%)}
 .logo-xl{flex-direction:column;gap:16px}.logo-xl .emblem{width:110px;height:110px;filter:drop-shadow(0 0 20px #e9cf8e66)}
 .logo-xl .logo-type{align-items:center}.logo-xl .logo-type b{font-size:42px;letter-spacing:.34em;margin-right:-.34em}.logo-xl .logo-type small{font-size:13px;margin-top:10px}
@@ -583,3 +583,12 @@ body.on-title>header,body.on-title>main{visibility:hidden}
 .sprite.overlord .sp-body.sp-token{border-color:var(--gold);box-shadow:0 0 0 2px #0009,0 0 22px #e9cf8e88}
 .sprite.enemy .sp-body.sp-token{transform:none}
 .portrait.portrait-foe{image-rendering:auto;background-size:cover!important;background-position:center!important}
+
+/* Atlas cells stay square inside the starter crop, including landscape phones. */
+.starter-grid .portrait:not(.portrait-file):not(.portrait-emblem){background-image:none;overflow:hidden}
+.starter-grid .portrait:not(.portrait-file):not(.portrait-emblem):before{content:'';position:absolute;left:0;top:0;width:100%;aspect-ratio:1;background-image:url('assets/portraits.png');background-size:400% 300%;background-position:var(--x) var(--y)}
+.starter-grid .portrait.portrait-new:not(.portrait-file):not(.portrait-emblem):before{background-image:url('assets/portraits-expansion.png');background-size:200% 200%}
+.sp-impact{position:absolute;pointer-events:none;z-index:900;border:2px solid var(--c);border-radius:50%;width:34px;height:34px;box-shadow:0 0 12px var(--c)}
+.sp-impact:after{content:'';position:absolute;left:-12px;right:-12px;top:50%;height:3px;background:var(--c);transform:rotate(-35deg);box-shadow:0 0 8px var(--c)}
+.sp-num.ult{font-size:25px;color:#ffe5a2;text-shadow:0 2px 3px #000,0 0 8px #a36925}
+.sp-num.coop:before{content:'협동 ';font-size:11px}.sp-num.extra:before{content:'추격 ';font-size:11px}

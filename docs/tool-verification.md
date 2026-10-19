@@ -13,3 +13,7 @@ Headroom 합성 JSON 300행: 도구 추정 8,977 → 3,513 토큰(60.9%). 실제
 Codex 절약 지침은 저장됐습니다. 일반 ChatGPT 계정 설정은 로그인되지 않아 미저장입니다. 모든 도구의 상시 자동 적용을 검증한 것은 아닙니다. 게임 실행에 이 도구들은 필요하지 않습니다.
 
 원본: [게시글](https://www.instagram.com/p/DeTUcWsmLPO/), [RTK](https://github.com/rtk-ai/rtk), [Ponytail](https://github.com/DietrichGebert/ponytail), [Caveman](https://github.com/JuliusBrussee/caveman), [Graphify](https://github.com/Graphify-Labs/graphify), [Headroom](https://github.com/headroomlabs-ai/headroom).
+
+## 추가 점검 (2026-10-17 작업, 10-19 마무리)
+
+agent-toolkit 검사에서는 Claude Code/Codex의 REA·Headroom·Context7 등록, 관련 스킬 파일, RTK 설정이 모두 존재했습니다. 이는 등록 검사이며 각 서비스의 실행 성공이나 상시 자동 적용을 뜻하지 않습니다. RTK로 게임 테스트 출력 축약을 실제 실행했습니다. Graphify 조회는 성공했지만 기존 98노드 색인이 최신 코드와 달라 전투 검증에는 현재 소스와 테스트를 사용했습니다. 일반 ChatGPT 계정 설정 적용은 이번에도 검증하지 않았습니다.

@@ -287,9 +287,14 @@ export class SpriteStage{
    if(a.melee&&kind!=='coop'){const reach=Math.max(0,len-(b.wid||72)*.7)/len;this.anim(a.move,[{transform:'none'},{transform:`translate(${dx*reach}px,${dy*reach}px) scale(1.06)`,offset:.45},{transform:'none'}],kind==='ult'?420:320);}
    else{this.anim(a.move,[{transform:'none'},{transform:`translate(${-dx/len*5}px,${-dy/len*5}px)`,offset:.3},{transform:'none'}],240);this.bolt(a,b,color,kind);}
   }
-  if(b.dead&&kind!=='ult')return;
+  if(this.enabled)this.impact(b,color,kind);
+  if(b.dead)return;
   this.flash(b);if(this.enabled&&!b.dead)this.anim(b.move,[{transform:'none'},{transform:`translate(${dx/len*(kind==='ult'?9:4)}px,${dy/len*(kind==='ult'?9:4)}px)`,offset:.35},{transform:'none'}],200,{delay:a.melee?110/this.speed:150/this.speed});
   if(kind==='ult'&&this.enabled)this.sparks(b,color,10);
+ }
+ impact(u,color,kind){
+  const el=document.createElement('i');el.className='sp-impact';el.style.cssText=`left:${u.x}px;top:${u.y-(u.hgt||96)*.5}px;--c:${color}`;this.layer.append(el);
+  el.animate([{transform:'translate(-50%,-50%) scale(.35)',opacity:1},{transform:`translate(-50%,-50%) scale(${kind==='ult'?2.4:1.2})`,opacity:0}],{duration:320/this.speed,easing:'ease-out'}).onfinish=()=>el.remove();
  }
  flash(u){u.body.animate([{filter:'brightness(3.2) saturate(0)'},{filter:'none'}],{duration:180/this.speed,delay:110/this.speed});}
  bolt(a,b,color,kind){

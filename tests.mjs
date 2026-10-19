@@ -219,3 +219,5 @@ test('방: 최대 5명, 1·2라운드 잔상 토벌, 5라운드 명식전과 명
  const winners=fought.filter(p=>r.feed.some(f=>f.round===5&&f.a===p.name&&f.winner===p.name));
  for(const p of winners)if(boss.echo)assert.ok(p.s.pending.some(x=>x.type==='echo'&&x.choices.includes(boss.echo))||p.bot);
 });
+
+ test('강화 추격은 양측에서 정확히 4회 유지된다',()=>{for(const id of [12,13,14,19,22]){const a=fresh(),o=fresh();a.board.fill(null);o.board.fill(null);a.board[0]=unit(id);o.board[0]=unit(id);const b=makeDuel(a,o,rng(19));for(const f of b.fighters){f.hp=f.max=100000;f.atk=10;f.threshold=999;f.buff=4;}const counts=new Map(b.fighters.map(f=>[f.uid,0]));for(let i=0;i<5;i++)for(const e of step(b))if(['coop','extra'].includes(e.kind))counts.set(e.from,counts.get(e.from)+1);for(const n of counts.values())assert.equal(n,4,HEROES[id].name);}});
